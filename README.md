@@ -16,13 +16,13 @@
 
 | Feature | Description |
 |---|---|
-| 👤 จัดการพนักงาน | เพิ่ม / ลบ / แก้ไขข้อมูลพนักงาน |
+| 👤 จัดการพนักงาน | เพิ่ม / ลบ |
 | ⏰ Check-in / Check-out | บันทึกเวลาเข้า-ออกงาน |
 | 📍 GPS Location | บันทึกพิกัดพร้อมกัน |
 | 📸 ถ่ายภาพยืนยัน | ยืนยันตัวตนด้วยรูปภาพ |
-| 📊 ประวัติการทำงาน | ดูย้อนหลังแบบละเอียด |
+| 📊 ประวัติการทำงาน | ดูย้อนหลัง |
 | 📅 ปฏิทินสรุป | ภาพรวมการเข้างาน |
-| ⚠️ ตรวจสอบการขาด/สาย | แจ้งเตือนอัตโนมัติ |
+| ⚠️ ตรวจสอบการขาด/สาย | แจ้งเตือนอัตโนมัติ/จะอัพเดต |
 | 🔐 ระบบ Login | Authentication & Logout |
 
 ---
@@ -36,7 +36,8 @@
 
 | Check-in | Check-out | History | Admin |
 |:---:|:---:|:---:|:---:|
-| ![checkin](images/checkin.png) | ![checkout](images/checkout.png) | ![history](images/history.png) | ![admin](images/admin.png) |
+| <img width="794" height="1138" alt="localhost_62895_ (4)" src="https://github.com/user-attachments/assets/04b847ac-d720-41b2-8d98-99b1719c48c5" />| <img width="794" height="1138" alt="localhost_62895_ (3)" src="https://github.com/user-attachments/assets/2b508e42-c010-4c1c-aa09-9e913b1fe624" />| <img width="794" height="1138" alt="localhost_62895_ (6)" src="https://github.com/user-attachments/assets/370be9d6-16dd-4307-89b9-45150947a125" />
+| <img width="794" height="1138" alt="localhost_62895_ (10)" src="https://github.com/user-attachments/assets/d186c03c-d1b5-44dd-b731-cd540abc78ce" />|
 
 ---
 
