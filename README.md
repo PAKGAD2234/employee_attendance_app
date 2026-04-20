@@ -36,8 +36,7 @@
 
 | Check-in | Check-out | History | Admin |
 |:---:|:---:|:---:|:---:|
-| <img width="794" height="1138" alt="localhost_62895_ (4)" src="https://github.com/user-attachments/assets/04b847ac-d720-41b2-8d98-99b1719c48c5" />| <img width="794" height="1138" alt="localhost_62895_ (3)" src="https://github.com/user-attachments/assets/2b508e42-c010-4c1c-aa09-9e913b1fe624" />| <img width="794" height="1138" alt="localhost_62895_ (6)" src="https://github.com/user-attachments/assets/370be9d6-16dd-4307-89b9-45150947a125" />
-| <img width="794" height="1138" alt="localhost_62895_ (10)" src="https://github.com/user-attachments/assets/d186c03c-d1b5-44dd-b731-cd540abc78ce" />|
+| <img width="794" height="1138" alt="localhost_62895_ (4)" src="https://github.com/user-attachments/assets/04b847ac-d720-41b2-8d98-99b1719c48c5" />| <img width="794" height="1138" alt="localhost_62895_ (3)" src="https://github.com/user-attachments/assets/2b508e42-c010-4c1c-aa09-9e913b1fe624" />| <img width="794" height="1138" alt="localhost_62895_ (6)" src="https://github.com/user-attachments/assets/370be9d6-16dd-4307-89b9-45150947a125" />|<img width="794" height="1138" alt="localhost_62895_ (10)" src="https://github.com/user-attachments/assets/d186c03c-d1b5-44dd-b731-cd540abc78ce" />|
 
 ---
 
