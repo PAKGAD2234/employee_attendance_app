@@ -3,7 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:universal_io/io.dart';
+import 'dart:typed_data';
 
 class CheckInUI extends StatefulWidget {
   final String employeeId;
@@ -44,19 +44,17 @@ class _CheckInUIState extends State<CheckInUI>
     super.dispose();
   }
 
-   Future<void> pickImage() async {
+    Future<void> pickImage() async {
   final picker = ImagePicker();
   final picked = await picker.pickImage(
     source: ImageSource.camera,
     imageQuality: 70,
   );
   if (picked != null) {
-    setState(() async {
-      imageFile = picked;
-      if (kIsWeb) {
-        imageBytes = await picked.readAsBytes();
-      }
-    });
+    if (kIsWeb) {
+      imageBytes = await picked.readAsBytes();
+    }
+    setState(() => imageFile = picked);
   }
 }
 
@@ -131,13 +129,8 @@ class _CheckInUIState extends State<CheckInUI>
     final deadline  = workStart.add(Duration(minutes: threshold));
     final isLate    = now.isAfter(deadline);
 
-    if (kIsWeb) {
-  final bytes = await imageFile!.readAsBytes();
-  await supabase.storage.from('attendance').uploadBinary(fileName, bytes);
-} else {
-  await supabase.storage.from('attendance').upload(
-    fileName, File(imageFile!.path));
-}
+      final bytes = await imageFile!.readAsBytes();
+      await supabase.storage.from('attendance').uploadBinary(fileName, bytes);   
 
     await supabase.from('attendance').insert({
       'employee_id'  : widget.employeeId,
@@ -457,7 +450,7 @@ class _CheckInUIState extends State<CheckInUI>
                                              // ✅ แทนด้วย:
                                                 kIsWeb
                                                   ? Image.memory(imageBytes!, fit: BoxFit.cover)
-                                                  : Image.file(File(imageFile!.path), fit: BoxFit.cover),
+                                                  : Image.network(imageFile!.path, fit: BoxFit.cover),
                                             // retake overlay
                                             Positioned(
                                               bottom: 12,

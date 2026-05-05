@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:universal_io/io.dart';
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -100,12 +99,8 @@ class _CheckOutUIState extends State<CheckOutUI>
         .eq('work_date', today);
     print('DEBUG rows today: $checkToday');
 
-     if (kIsWeb) {
-          final bytes = await imageFile!.readAsBytes();
-          await supabase.storage.from('attendance').uploadBinary(fileName, bytes);
-        } else {
-          await supabase.storage.from('attendance').upload(fileName, File(imageFile!.path));
-        }
+       final bytes = await imageFile!.readAsBytes();
+      await supabase.storage.from('attendance').uploadBinary(fileName, bytes);
 
     final result = await supabase
         .from('attendance')
@@ -369,9 +364,9 @@ class _CheckOutUIState extends State<CheckOutUI>
                                       child: Stack(
                                         fit: StackFit.expand,
                                         children: [
-                                             kIsWeb
-                                            ? Image.memory(imageBytes!, fit: BoxFit.cover)
-                                            : Image.file(File(imageFile!.path), fit: BoxFit.cover),
+                                            kIsWeb
+                                              ? Image.memory(imageBytes!, fit: BoxFit.cover)
+                                              : Image.network(imageFile!.path, fit: BoxFit.cover),  
                                           Positioned(
                                             bottom: 12,
                                             right: 12,
