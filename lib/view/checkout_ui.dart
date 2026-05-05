@@ -1,4 +1,6 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:universal_io/io.dart';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,7 +20,8 @@ class _CheckOutUIState extends State<CheckOutUI>
     with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
 
-  File? imageFile;
+  XFile? imageFile;
+  Uint8List? imageBytes;
   bool isLoading = false;
 
   late AnimationController _fadeController;
@@ -47,7 +50,10 @@ class _CheckOutUIState extends State<CheckOutUI>
       imageQuality: 70,
     );
     if (picked != null) {
-      setState(() => imageFile = File(picked.path));
+      setState(() => imageFile = picked);
+  if (kIsWeb) {
+    imageBytes = await picked.readAsBytes();
+  }
     }
   }
 
@@ -94,7 +100,12 @@ class _CheckOutUIState extends State<CheckOutUI>
         .eq('work_date', today);
     print('DEBUG rows today: $checkToday');
 
-    await supabase.storage.from('attendance').upload(fileName, imageFile!);
+     if (kIsWeb) {
+          final bytes = await imageFile!.readAsBytes();
+          await supabase.storage.from('attendance').uploadBinary(fileName, bytes);
+        } else {
+          await supabase.storage.from('attendance').upload(fileName, File(imageFile!.path));
+        }
 
     final result = await supabase
         .from('attendance')
@@ -358,8 +369,9 @@ class _CheckOutUIState extends State<CheckOutUI>
                                       child: Stack(
                                         fit: StackFit.expand,
                                         children: [
-                                          Image.file(imageFile!,
-                                              fit: BoxFit.cover),
+                                             kIsWeb
+                                            ? Image.memory(imageBytes!, fit: BoxFit.cover)
+                                            : Image.file(File(imageFile!.path), fit: BoxFit.cover),
                                           Positioned(
                                             bottom: 12,
                                             right: 12,
