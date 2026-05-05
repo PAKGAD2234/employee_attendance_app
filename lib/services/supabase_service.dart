@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -16,6 +17,27 @@ class SupabaseService {
   }
 
   SupabaseClient get client => _client;
+  // เพิ่มฟังก์ชันนี้ลงในคลาส SupabaseService
+  Future<String?> uploadAttendanceImage(String fileName, dynamic imageFile) async {
+    try {
+      if (kIsWeb) {
+        // ✅ สำหรับ Web: ต้องส่งเป็น Bytes (Uint8List) เท่านั้น
+        // imageFile ที่ส่งมาควรเป็น Uint8List จากการใช้ XFile.readAsBytes()
+        await _client.storage
+            .from('attendance')
+            .uploadBinary(fileName, imageFile);
+      } else {
+        // ✅ สำหรับ Mobile: ใช้ upload แบบ File ปกติ
+        await _client.storage
+            .from('attendance')
+            .upload(fileName, imageFile);
+      }
+      return fileName;
+    } catch (e) {
+      print('Error uploading image: $e');
+      return null;
+    }
+  }
 
   // ดึงข้อมูลพนักงานทั้งหมด
   Future<List<Map<String, dynamic>>> getEmployees() async {

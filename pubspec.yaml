@@ -33,6 +33,7 @@ dependencies:
   fluttertoast: ^8.2.8
   url_launcher: ^6.3.0  # สำหรับโทรออก
   timeago: ^3.6.0  
+  universal_io: ^2.2.2
 
 dev_dependencies:
   flutter_test:

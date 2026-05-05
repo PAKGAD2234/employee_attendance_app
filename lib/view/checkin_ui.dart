@@ -1,8 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:universal_io/io.dart';
 
 class CheckInUI extends StatefulWidget {
   final String employeeId;
@@ -18,8 +19,11 @@ class _CheckInUIState extends State<CheckInUI>
     with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
 
-  File? imageFile;
+  XFile? imageFile;
+  Uint8List? imageBytes;
+
   bool isLoading = false;
+ 
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnim;
@@ -40,16 +44,21 @@ class _CheckInUIState extends State<CheckInUI>
     super.dispose();
   }
 
-  Future<void> pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 70,
-    );
-    if (picked != null) {
-      setState(() => imageFile = File(picked.path));
-    }
+   Future<void> pickImage() async {
+  final picker = ImagePicker();
+  final picked = await picker.pickImage(
+    source: ImageSource.camera,
+    imageQuality: 70,
+  );
+  if (picked != null) {
+    setState(() async {
+      imageFile = picked;
+      if (kIsWeb) {
+        imageBytes = await picked.readAsBytes();
+      }
+    });
   }
+}
 
   Future<Position> getLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -122,7 +131,13 @@ class _CheckInUIState extends State<CheckInUI>
     final deadline  = workStart.add(Duration(minutes: threshold));
     final isLate    = now.isAfter(deadline);
 
-    await supabase.storage.from('attendance').upload(fileName, imageFile!);
+    if (kIsWeb) {
+  final bytes = await imageFile!.readAsBytes();
+  await supabase.storage.from('attendance').uploadBinary(fileName, bytes);
+} else {
+  await supabase.storage.from('attendance').upload(
+    fileName, File(imageFile!.path));
+}
 
     await supabase.from('attendance').insert({
       'employee_id'  : widget.employeeId,
@@ -439,10 +454,10 @@ class _CheckInUIState extends State<CheckInUI>
                                         child: Stack(
                                           fit: StackFit.expand,
                                           children: [
-                                            Image.file(
-                                              imageFile!,
-                                              fit: BoxFit.cover,
-                                            ),
+                                             // ✅ แทนด้วย:
+                                                kIsWeb
+                                                  ? Image.memory(imageBytes!, fit: BoxFit.cover)
+                                                  : Image.file(File(imageFile!.path), fit: BoxFit.cover),
                                             // retake overlay
                                             Positioned(
                                               bottom: 12,
