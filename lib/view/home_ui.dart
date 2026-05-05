@@ -149,37 +149,43 @@ class _HomepageUIState extends State<HomepageUI>
                         children: [
                           // Icon badge
                           ScaleTransition(
-                            scale: _pulseAnim,
-                            child: Container(
-                              width: 110,
-                              height: 110,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(28),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Color(0xFF29B6F6),
-                                    Color(0xFF0277BD),
-                                  ],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF29B6F6).withOpacity(0.50),
-                                    blurRadius: 36,
-                                    spreadRadius: 2,
-                                    offset: const Offset(0, 10),
+                                  scale: _pulseAnim,
+                                  child: Container(
+                                    width: 110,
+                                    height: 110,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(24),
+                                      gradient: const LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          Color(0xFF1565C0),  // น้ำเงินเข้ม
+                                          Color.fromARGB(255, 207, 215, 219),  // ฟ้ากลาง
+                                          Color.fromARGB(255, 184, 226, 245),  // ฟ้าอ่อน
+                                        ],
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF29B6F6).withOpacity(0.50),
+                                          blurRadius: 36,
+                                          spreadRadius: 2,
+                                          offset: const Offset(0, 10),
+                                        ),
+                                      ],
+                                      border: Border.all(
+                                        color: const Color(0xFF29B6F6).withOpacity(0.60),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(14),
+                                      child: Image.asset(
+                                        'assets/images/OpMatch.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
                                   ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.access_time_rounded,
-                                size: 58,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-
+                                ),
                           const SizedBox(height: 28),
 
                           // App name

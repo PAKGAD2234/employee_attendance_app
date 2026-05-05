@@ -54,7 +54,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     _slideCardAnim = Tween<Offset>(
       begin: const Offset(0, 0.12),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+    ).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
 
     _pulseAnim = Tween<double>(begin: 0.92, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
@@ -78,7 +80,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           content: const Text("กรุณากรอก username และ password"),
           backgroundColor: Colors.red.shade700,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -108,7 +112,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) => EmployeeHomeView(employeeId: employeeId),
+                builder:
+                    (_) => EmployeeHomeView(
+                      employeeId: employeeId,
+                      employeeName: employee['full_name'] ?? '',
+                      employeePhone: employee['phone'] ?? '',
+                    ),
               ),
             );
           }
@@ -120,7 +129,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               content: const Text("Username หรือ Password ไม่ถูกต้อง"),
               backgroundColor: Colors.red.shade700,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
         }
@@ -132,7 +143,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             content: Text("Error: $e"),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -227,21 +240,35 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                               gradient: const LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
-                                colors: [Color(0xFF29B6F6), Color(0xFF0277BD)],
+                                colors: [
+                                Color(0xFF1565C0),  // น้ำเงินเข้ม
+                                  Color.fromARGB(255, 207, 215, 219),  // ฟ้ากลาง
+                                  Color.fromARGB(255, 184, 226, 245),  // ฟ้าอ่อน
+                                ],
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF29B6F6).withOpacity(0.50),
+                                  color: const Color(
+                                    0xFF29B6F6,
+                                  ).withOpacity(0.50),
                                   blurRadius: 32,
                                   spreadRadius: 2,
                                   offset: const Offset(0, 8),
                                 ),
                               ],
+                              border: Border.all(
+                                color: const Color(
+                                  0xFF29B6F6,
+                                ).withOpacity(0.60),
+                                width: 1.5,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.access_time_rounded,
-                              size: 48,
-                              color: Colors.white,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Image.asset(
+                                'assets/images/OpMatch.png',
+                                fit: BoxFit.contain,
+                              ),
                             ),
                           ),
                         ),
@@ -332,30 +359,32 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF29B6F6),
                                     foregroundColor: Colors.white,
-                                    disabledBackgroundColor:
-                                        const Color(0xFF29B6F6).withOpacity(0.5),
+                                    disabledBackgroundColor: const Color(
+                                      0xFF29B6F6,
+                                    ).withOpacity(0.5),
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                   ),
-                                  child: isLoading
-                                      ? const SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2.5,
+                                  child:
+                                      isLoading
+                                          ? const SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                              strokeWidth: 2.5,
+                                            ),
+                                          )
+                                          : const Text(
+                                            'เข้าสู่ระบบ',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: 0.5,
+                                            ),
                                           ),
-                                        )
-                                      : const Text(
-                                          'เข้าสู่ระบบ',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
                                 ),
                               ),
                             ],
@@ -363,8 +392,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         ),
 
                         const SizedBox(height: 32),
-
-                        
 
                         const SizedBox(height: 16),
                       ],
@@ -401,19 +428,28 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       style: const TextStyle(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.white.withOpacity(0.30), fontSize: 14),
+        hintStyle: TextStyle(
+          color: Colors.white.withOpacity(0.30),
+          fontSize: 14,
+        ),
         prefixIcon: Icon(icon, color: const Color(0xFF29B6F6), size: 20),
         filled: true,
         fillColor: Colors.white.withOpacity(0.08),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.15), width: 1),
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.15),
+            width: 1,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFF29B6F6), width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
@@ -425,9 +461,15 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       style: const TextStyle(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         hintText: 'รหัสผ่านที่ได้รับจากแอดมิน',
-        hintStyle: TextStyle(color: Colors.white.withOpacity(0.30), fontSize: 14),
-        prefixIcon: const Icon(Icons.lock_outline_rounded,
-            color: Color(0xFF29B6F6), size: 20),
+        hintStyle: TextStyle(
+          color: Colors.white.withOpacity(0.30),
+          fontSize: 14,
+        ),
+        prefixIcon: const Icon(
+          Icons.lock_outline_rounded,
+          color: Color(0xFF29B6F6),
+          size: 20,
+        ),
         suffixIcon: IconButton(
           icon: Icon(
             obscurePassword
@@ -442,13 +484,19 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         fillColor: Colors.white.withOpacity(0.08),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.15), width: 1),
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.15),
+            width: 1,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFF29B6F6), width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }

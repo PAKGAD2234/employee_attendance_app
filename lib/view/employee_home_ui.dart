@@ -10,7 +10,9 @@ import 'checkin_ui.dart';
 
 class EmployeeHomeView extends StatefulWidget {
   final String employeeId;
-  const EmployeeHomeView({super.key, required this.employeeId});
+  final String employeeName;   // เพิ่ม
+  final String employeePhone;  // เพิ่ม
+  const EmployeeHomeView({super.key, required this.employeeId, required this.employeeName, required this.employeePhone});
 
   @override
   State<EmployeeHomeView> createState() => _EmployeeHomeViewState();
@@ -410,6 +412,8 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView>
                                           builder:
                                               (_) => CheckInUI(
                                                 employeeId: widget.employeeId,
+                                                employeeName: widget.employeeName,
+                                                employeePhone: widget.employeePhone,
                                               ),
                                         ),
                                       ),
@@ -429,6 +433,8 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView>
                                           builder:
                                               (_) => CheckOutUI(
                                                 employeeId: widget.employeeId,
+                                                employeeName: widget.employeeName,
+                                                employeePhone: widget.employeePhone,
                                               ),
                                         ),
                                       ),

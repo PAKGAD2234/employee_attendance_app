@@ -172,23 +172,30 @@ class _SplashUiState extends State<SplashUi>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            Color(0xFF29B6F6),
-                            Color(0xFF0277BD),
+                             Color(0xFF1565C0),  // น้ำเงินเข้ม
+                             Color.fromARGB(255, 207, 215, 219),  // ฟ้ากลาง
+                             Color.fromARGB(255, 184, 226, 245),  // ฟ้าอ่อน
                           ],
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF29B6F6).withOpacity(0.45),
-                            blurRadius: 32,
+                            color: const Color(0xFF29B6F6).withOpacity(0.50),
+                            blurRadius: 36,
                             spreadRadius: 2,
-                            offset: const Offset(0, 8),
+                            offset: const Offset(0, 10),
                           ),
                         ],
+                        border: Border.all(
+                          color: const Color(0xFF29B6F6).withOpacity(0.60),
+                          width: 1.5,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.access_time_rounded,
-                        size: 58,
-                        color: Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Image.asset(
+                          'assets/images/OpMatch.png',
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ),

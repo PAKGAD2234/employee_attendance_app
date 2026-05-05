@@ -6,7 +6,9 @@ import 'package:geolocator/geolocator.dart';
 
 class CheckOutUI extends StatefulWidget {
   final String employeeId;
-  const CheckOutUI({super.key, required this.employeeId});
+  final String employeeName;   // เพิ่ม
+  final String employeePhone;  // เพิ่ม
+  const CheckOutUI({super.key, required this.employeeId, required this.employeeName, required this.employeePhone});
 
   @override
   State<CheckOutUI> createState() => _CheckOutUIState();
@@ -67,43 +69,64 @@ class _CheckOutUIState extends State<CheckOutUI>
         desiredAccuracy: LocationAccuracy.high);
   }
 
-  Future<void> checkOut() async {
-    if (imageFile == null) {
-      _showSnackBar('กรุณาถ่ายรูปก่อน', isError: true);
+   Future<void> checkOut() async {
+  if (imageFile == null) {
+    _showSnackBar('กรุณาถ่ายรูปก่อน', isError: true);
+    return;
+  }
+
+  setState(() => isLoading = true);
+
+  try {
+    final pos = await getLocation();
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final now = DateTime.now().toLocal();
+    final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    print('DEBUG today: $today');
+    print('DEBUG employeeId: ${widget.employeeId}');
+
+    // query ตรงๆ ก่อน update
+    final checkToday = await supabase
+        .from('attendance')
+        .select('id, work_date, checkout_time')
+        .eq('employee_id', widget.employeeId)
+        .eq('work_date', today);
+    print('DEBUG rows today: $checkToday');
+
+    await supabase.storage.from('attendance').upload(fileName, imageFile!);
+
+    final result = await supabase
+        .from('attendance')
+        .update({
+          'checkout_time' : now.toIso8601String(),
+          'checkout_photo': fileName,
+          'checkout_lat'  : pos.latitude,
+          'checkout_lng'  : pos.longitude,
+          'status'        : 'checkout',
+        })
+        .eq('employee_id', widget.employeeId)
+        .eq('work_date', today)
+        .filter('checkout_time', 'is', null)
+        .select();
+
+    print('DEBUG update result: $result');
+
+    if (result.isEmpty) {
+      _showSnackBar('ไม่พบข้อมูล Check In วันนี้', isError: true);
+      setState(() => isLoading = false);
       return;
     }
 
-    setState(() => isLoading = true);
-
-    try {
-      final pos = await getLocation();
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-      await supabase.storage.from('attendance').upload(fileName, imageFile!);
-
-      final today = DateTime.now().toIso8601String().split('T')[0];
-
-      // อัปเดต record ที่มี checkin อยู่แล้ววันนี้
-      await supabase
-          .from('attendance')
-          .update({
-            'checkout_time': DateTime.now().toIso8601String(),
-            'checkout_photo': fileName,
-            'checkout_lat': pos.latitude,
-            'checkout_lng': pos.longitude,
-            'status': 'checkout',
-          })
-          .eq('employee_id', widget.employeeId)
-          .eq('work_date', today);
-
-      _showSnackBar('เช็คเอาท์สำเร็จ ✓');
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      _showSnackBar('Error: $e', isError: true);
-    }
-
-    setState(() => isLoading = false);
+    _showSnackBar('เช็คเอาท์สำเร็จ ✓');
+    if (mounted) Navigator.pop(context);
+  } catch (e) {
+    print('DEBUG error: $e');
+    _showSnackBar('Error: $e', isError: true);
   }
+
+  setState(() => isLoading = false);
+}
 
   void _showSnackBar(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
