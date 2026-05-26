@@ -9,6 +9,7 @@ class CheckInUI extends StatefulWidget {
   final String employeeId;
   final String employeeName;   // เพิ่ม
   final String employeePhone;  // เพิ่ม
+  
   const CheckInUI({super.key, required this.employeeId, required this.employeeName, required this.employeePhone});
 
   @override
@@ -21,7 +22,7 @@ class _CheckInUIState extends State<CheckInUI>
 
   XFile? imageFile;
   Uint8List? imageBytes;
-
+  String _siteName = '';
   bool isLoading = false;
  
 
@@ -36,7 +37,20 @@ class _CheckInUIState extends State<CheckInUI>
       duration: const Duration(milliseconds: 600),
     )..forward();
     _fadeAnim = CurvedAnimation(parent: _fadeController, curve: Curves.easeIn);
+     _loadSiteName(); // ✅ เพิ่มตรงนี้
   }
+  // ✅ เพิ่ม function นี้
+Future<void> _loadSiteName() async {
+  try {
+    final emp = await supabase
+        .from('employees')
+        .select('work_sites(name)')
+        .eq('id', widget.employeeId)
+        .single();
+    final name = emp['work_sites']?['name'] ?? '';
+    if (mounted) setState(() => _siteName = name);
+  } catch (_) {}
+}
 
   @override
   void dispose() {
@@ -51,10 +65,12 @@ class _CheckInUIState extends State<CheckInUI>
     imageQuality: 70,
   );
   if (picked != null) {
-    if (kIsWeb) {
-      imageBytes = await picked.readAsBytes();
-    }
-    setState(() => imageFile = picked);
+    // ดึง bytes ทุก platform ไม่แค่ Web
+    final bytes = await picked.readAsBytes();
+    setState(() {
+      imageFile = picked;
+      imageBytes = bytes;
+    });
   }
 }
 
@@ -115,7 +131,7 @@ class _CheckInUIState extends State<CheckInUI>
 
     final empData = await supabase
         .from('employees')
-        .select('work_start_time, late_threshold_minutes')
+        .select('work_start_time, late_threshold_minutes, work_site_id') // ← เพิ่ม
         .eq('id', widget.employeeId)
         .single();
 
@@ -141,13 +157,20 @@ class _CheckInUIState extends State<CheckInUI>
       'checkin_photo': fileName,
       'status'       : 'checkin',
       'late'         : isLate,
+      'work_site_id' : empData['work_site_id'], // ← เพิ่มบรรทัดเดียว
+
     });
 
     await _notifyAdmin(
       employeeName: widget.employeeName,
       isLate      : isLate,
       phone       : widget.employeePhone,
+      workSiteId  : empData['work_site_id']?.toString(),
     );
+    await supabase.functions.invoke('push-notify', body: {
+  'title': isLate ? '⚠️ มาสาย' : '✅ เช็คอินแล้ว',
+  'body': '${widget.employeeName} • ${_formatTime(now)}',
+   });
 
     _showSnackBar(isLate ? 'เช็คอินสำเร็จ (สาย) ⚠️' : 'เช็คอินสำเร็จ ✓');
     if (mounted) Navigator.pop(context);
@@ -162,8 +185,10 @@ class _CheckInUIState extends State<CheckInUI>
   required String employeeName,
   required bool isLate,
   required String phone,
+  required String? workSiteId,
 }) async {
   try {
+      
         await supabase.from('notifications').insert({
       'type'           : isLate ? 'late' : 'checkin',
       'employee_name'  : employeeName,
@@ -171,6 +196,7 @@ class _CheckInUIState extends State<CheckInUI>
       'message'        : isLate
           ? '⚠️ $employeeName เช็คอินสาย'
           : '✅ $employeeName เช็คอินแล้ว',
+      'work_site_id'   : workSiteId,
       'is_read'        : false,
       // ไม่ต้องส่ง created_at — ให้ DB default ทำเอง (แม่นยำกว่า)
     });
@@ -447,10 +473,9 @@ class _CheckInUIState extends State<CheckInUI>
                                         child: Stack(
                                           fit: StackFit.expand,
                                           children: [
-                                             // ✅ แทนด้วย:
-                                                kIsWeb
-                                                  ? Image.memory(imageBytes!, fit: BoxFit.cover)
-                                                  : Image.network(imageFile!.path, fit: BoxFit.cover),
+                                             imageBytes != null
+                                              ? Image.memory(imageBytes!, fit: BoxFit.cover)
+                                              : const SizedBox(),
                                             // retake overlay
                                             Positioned(
                                               bottom: 12,
@@ -537,6 +562,32 @@ class _CheckInUIState extends State<CheckInUI>
                               ],
                             ),
                           ),
+                          if (_siteName.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF29B6F6).withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFF29B6F6).withOpacity(0.25)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.business_rounded, color: Color(0xFF29B6F6), size: 16),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _siteName,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF29B6F6),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),  
+                              ),
+                            ],
+
 
                           const SizedBox(height: 28),
 

@@ -11,11 +11,17 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  web: ^1.0.0
+
 
   cupertino_icons: ^1.0.8
 
   # Database
   supabase_flutter: ^2.8.0
+
+  # Firebase
+  firebase_core: ^3.0.0
+  firebase_messaging: ^15.0.0
 
   # UI
   google_fonts: ^6.2.1

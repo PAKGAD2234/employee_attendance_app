@@ -145,7 +145,8 @@ class GradientButton extends StatelessWidget {
           foregroundColor: Colors.white,
           shadowColor: Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );
@@ -230,12 +231,15 @@ void showThemedSnackBar(
             size: 18,
           ),
           const SizedBox(width: 10),
-          Expanded(child: Text(message, style: const TextStyle(color: Colors.white))),
+          Expanded(
+              child:
+                  Text(message, style: const TextStyle(color: Colors.white))),
         ],
       ),
       backgroundColor: isError ? const Color(0xFFB71C1C) : kDeepBlue,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
     ),
   );
@@ -266,6 +270,7 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
   String storedPassword = '';
   String department = '-';
   String email = '-';
+  String siteName = '-'; // ✅ เพิ่ม
 
   final currentPasswordController = TextEditingController();
   final newPasswordController = TextEditingController();
@@ -274,11 +279,8 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
-  
- 
 
   @override
-
   void initState() {
     super.initState();
     supabaseService.initialize(supabase);
@@ -296,9 +298,15 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
     loadEmployee();
   }
 
+  // ✅ แก้ให้ join work_sites มาด้วย
   Future<void> loadEmployee() async {
     try {
-      final data = await supabaseService.getEmployee(widget.employeeId);
+      final data = await supabase
+          .from('employees')
+          .select('*, work_sites!employees_work_site_id_fkey(name)')
+          .eq('id', widget.employeeId)
+          .maybeSingle();
+
       if (mounted && data != null) {
         setState(() {
           fullName = data['full_name'] ?? 'Unknown';
@@ -307,7 +315,7 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
           phone = data['phone'] ?? '-';
           department = data['department'] ?? '-';
           email = data['email'] ?? '-';
-
+          siteName = data['work_sites']?['name'] ?? '-';
           profilePhotoUrl =
               supabaseService.getProfilePhotoUrl(data['profile_photo']);
           storedPassword = data['password'] ?? '';
@@ -315,7 +323,9 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
         _fadeCtrl.forward(from: 0);
       }
     } catch (e) {
-      if (mounted) showThemedSnackBar(context, 'Error loading profile: $e', isError: true);
+      if (mounted)
+        showThemedSnackBar(context, 'Error loading profile: $e',
+            isError: true);
     }
   }
 
@@ -382,7 +392,8 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
       await loadEmployee();
     } catch (e) {
       if (mounted)
-        showThemedSnackBar(context, 'Error changing password: $e', isError: true);
+        showThemedSnackBar(context, 'Error changing password: $e',
+            isError: true);
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -397,6 +408,7 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
     super.dispose();
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -404,11 +416,8 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
       body: TimeTrackBackground(
         child: Stack(
           children: [
-            // ── Pulse corner decorations ──
             const _PulseCircle(size: 280, alignment: Alignment(-1.3, -1.1)),
             const _PulseCircle(size: 200, alignment: Alignment(1.4, 1.2)),
-
-            // ── Main content ──
             SafeArea(
               child: FadeTransition(
                 opacity: _fadeAnim,
@@ -421,9 +430,7 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
                         child: isLoading
                             ? const Center(
                                 child: CircularProgressIndicator(
-                                  color: kPrimaryBlue,
-                                ),
-                              )
+                                    color: kPrimaryBlue))
                             : _buildBody(),
                       ),
                       _buildFooter(),
@@ -438,13 +445,12 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
     );
   }
 
-  // ── Custom AppBar ─────────────────────────────────────────────────────────
+  // ── AppBar ────────────────────────────────────────────────────────────────
   Widget _buildCustomAppBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          // Back button
           GestureDetector(
             onTap: () => Navigator.maybePop(context),
             child: Container(
@@ -459,7 +465,6 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
             ),
           ),
           const SizedBox(width: 14),
-          // Title
           const Text(
             'โปรไฟล์พนักงาน',
             style: TextStyle(
@@ -470,13 +475,11 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
             ),
           ),
           const Spacer(),
-          // Badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [kPrimaryBlue, kDeepBlue],
-              ),
+              gradient:
+                  const LinearGradient(colors: [kPrimaryBlue, kDeepBlue]),
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Text(
@@ -505,7 +508,7 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
           _buildAvatarSection(),
           const SizedBox(height: 20),
           _buildInfoCard(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildPasswordCard(),
           const SizedBox(height: 12),
         ],
@@ -517,7 +520,6 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
   Widget _buildAvatarSection() {
     return Column(
       children: [
-        // Pulsing ring around avatar
         _PulsingAvatarRing(
           child: CircleAvatar(
             radius: 52,
@@ -539,16 +541,73 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          department,
-          style: TextStyle(
-            color: kPrimaryBlue.withOpacity(0.85),
-            fontSize: 14,
-          ),
+        const SizedBox(height: 6),
+        // ✅ แสดง department + siteName ใต้ชื่อ
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (department != '-') ...[
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: kPrimaryBlue.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border:
+                      Border.all(color: kPrimaryBlue.withOpacity(0.30)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.work_outline,
+                        size: 12, color: kPrimaryBlue.withOpacity(0.85)),
+                    const SizedBox(width: 5),
+                    Text(
+                      department,
+                      style: TextStyle(
+                        color: kPrimaryBlue.withOpacity(0.85),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (department != '-' && siteName != '-')
+              const SizedBox(width: 8),
+            if (siteName != '-') ...[
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: Colors.teal.withOpacity(0.30)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.location_on_outlined,
+                        size: 12,
+                        color: Colors.teal[300]),
+                    const SizedBox(width: 5),
+                    Text(
+                      siteName,
+                      style: TextStyle(
+                        color: Colors.teal[300],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 14),
-        // Change photo button (outlined style)
         OutlinedButton.icon(
           onPressed: pickProfilePhoto,
           icon: const Icon(Icons.photo_camera_outlined,
@@ -558,9 +617,9 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: kPrimaryBlue),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                borderRadius: BorderRadius.circular(20)),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           ),
         ),
       ],
@@ -573,6 +632,7 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Row(
             children: [
               Container(
@@ -597,59 +657,130 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
           ),
           const SizedBox(height: 16),
           Divider(color: Colors.white.withOpacity(0.08)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+
           _buildInfoRow(Icons.alternate_email, 'Username', username),
           _buildInfoRow(Icons.mark_email_read_sharp, 'Email', email),
-          _buildInfoRow(Icons.person_outline, 'ชื่อ', fullName),
+          _buildInfoRow(Icons.person_outline, 'ชื่อ-นามสกุล', fullName),
           _buildInfoRow(Icons.language, 'ชื่ออังกฤษ', englishName),
           _buildInfoRow(Icons.phone, 'เบอร์โทรศัพท์', phone),
-          _buildInfoRow(Icons.work, 'ตำแหน่ง', department),
+          _buildInfoRow(Icons.work_outline, 'ตำแหน่ง', department),
+
+          // ✅ เพิ่มแถวสถานที่ทำงาน — ไฮไลต์พิเศษ
+          _buildSiteRow(),
         ],
       ),
     );
   }
-  
-  Widget _buildInfoRow(IconData icon, String title, String value) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: kPrimaryBlue.withOpacity(0.8), size: 18),
-        const SizedBox(width: 12),
 
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.white.withOpacity(0.55),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value.isNotEmpty ? value : '-',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Divider(
-                color: Colors.white.withOpacity(0.05),
-                height: 1,
-              )
-            ],
-          ),
+  // ✅ แถวสถานที่ทำงาน — ดีไซน์เด่นกว่าแถวอื่น
+  Widget _buildSiteRow() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.teal.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.teal.withOpacity(0.22)),
         ),
-      ],
-    ),
-  );
-}
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: Colors.teal.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(Icons.location_on_rounded,
+                  color: Colors.teal[300], size: 16),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'สถานที่ทำงาน',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.50),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    siteName != '-' ? siteName : 'ยังไม่กำหนดสถานที่',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: siteName != '-'
+                          ? Colors.teal[300]
+                          : Colors.white.withOpacity(0.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (siteName != '-')
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Active',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.teal[300],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: kPrimaryBlue.withOpacity(0.8), size: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.50),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value.isNotEmpty ? value : '-',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Divider(color: Colors.white.withOpacity(0.05), height: 1),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   // ── Password card ─────────────────────────────────────────────────────────
   Widget _buildPasswordCard() {
@@ -774,14 +905,12 @@ class _PulsingAvatarRingState extends State<_PulsingAvatarRing>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-              color: kPrimaryBlue
-                  .withOpacity(0.3 + 0.4 * _pulse.value),
+              color: kPrimaryBlue.withOpacity(0.3 + 0.4 * _pulse.value),
               width: 2.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: kPrimaryBlue
-                    .withOpacity(0.1 + 0.2 * _pulse.value),
+                color: kPrimaryBlue.withOpacity(0.1 + 0.2 * _pulse.value),
                 blurRadius: 16 + 8 * _pulse.value,
                 spreadRadius: 2,
               ),

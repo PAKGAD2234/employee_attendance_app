@@ -1,6 +1,6 @@
 {
-    "name": "employee_attendance_app",
-    "short_name": "employee_attendance_app",
+    "name": "OpMach HR System",
+    "short_name": "OpMach",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

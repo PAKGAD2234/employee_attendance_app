@@ -17,6 +17,41 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
 
   List attendance = [];
   bool isLoading = true;
+  DateTime? selectedDate;
+
+  DateTime? _parseWorkDate(dynamic raw) {
+    try {
+      return DateTime.parse(raw.toString());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  List get _filteredAttendance {
+    if (selectedDate == null) return attendance;
+    return attendance.where((record) {
+      final workDate = _parseWorkDate(record['work_date']);
+      return workDate != null && _isSameDate(workDate, selectedDate!);
+    }).toList();
+  }
+
+  String _selectedDateLabel() {
+    if (selectedDate == null) return 'เลือกวันที่';
+    const thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    return 'วันที่ ${selectedDate!.day} ${thMonths[selectedDate!.month - 1]} ${selectedDate!.year + 543}';
+  }
+
+  String _getSiteName(Map record) {
+  try {
+    return record['employees']?['work_sites']?['name'] ?? '';
+  } catch (_) {
+    return '';
+  }
+}
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnim;
@@ -82,6 +117,43 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
     }
   }
 
+  Future<void> _pickDate() async {
+    final today = DateTime.now();
+    final result = await showDatePicker(
+      context: context,
+      initialDate: selectedDate ?? today,
+      firstDate: DateTime(today.year - 5),
+      lastDate: DateTime(today.year + 1),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF29B6F6),
+              onPrimary: Colors.white,
+              surface: Color(0xFF0D1B2A),
+              onSurface: Colors.white,
+            ),
+            dialogBackgroundColor: const Color(0xFF07101B),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+    );
+    if (result != null) {
+      setState(() {
+        selectedDate = result;
+      });
+      _fadeController.forward(from: 0);
+    }
+  }
+
+  void _clearDateFilter() {
+    setState(() {
+      selectedDate = null;
+    });
+    _fadeController.forward(from: 0);
+  }
+
   // คำนวณชั่วโมงทำงาน
   String _calcDuration(dynamic checkInRaw, dynamic checkOutRaw) {
     try {
@@ -100,7 +172,8 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
   void _showPhotoDialog(String url, String label) {
     showDialog(
       context: context,
-      builder: (_) => Dialog(
+      barrierDismissible: false,
+      builder: (dialogContext) => Dialog(
         backgroundColor: Colors.transparent,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -117,7 +190,7 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
             ),
             const SizedBox(height: 16),
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -267,6 +340,35 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                           color: Color(0xFF29B6F6),
                           fontWeight: FontWeight.w600)),
                 ),
+                 Builder(builder: (_) {
+      final siteName = (record['employees']?['work_sites']?['name'] ?? '') as String;
+      if (siteName.isEmpty) return const SizedBox.shrink();
+      return Row(
+        children: [
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.teal.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.teal.withOpacity(0.30), width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.location_on, size: 11, color: Colors.teal[300]),
+                const SizedBox(width: 4),
+                Text(siteName,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.teal[300],
+                        fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+        ],
+      );
+    }),
                 const Spacer(),
                 if (duration != '-')
                   Container(
@@ -412,7 +514,7 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                       ),
                       const Spacer(),
                       // จำนวนรายการ
-                      if (!isLoading && attendance.isNotEmpty)
+                      if (!isLoading && _filteredAttendance.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
@@ -424,7 +526,7 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                                     const Color(0xFF29B6F6).withOpacity(0.35)),
                           ),
                           child: Text(
-                            '${attendance.length} รายการ',
+                            '${_filteredAttendance.length} รายการ',
                             style: const TextStyle(
                               fontSize: 12,
                               color: Color(0xFF29B6F6),
@@ -437,6 +539,66 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                 ),
 
                 const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(18),
+                          onTap: _pickDate,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.12),
+                                  width: 1),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_month,
+                                    color: Color(0xFF29B6F6), size: 18),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _selectedDateLabel(),
+                                    style: TextStyle(
+                                      color: selectedDate == null
+                                          ? Colors.white.withOpacity(0.55)
+                                          : Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (selectedDate != null) ...[
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          onTap: _clearDateFilter,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withOpacity(0.08),
+                            ),
+                            child: const Icon(Icons.close,
+                                size: 18, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
 
                 // ── Body ────────────────────────────────────────
                 Expanded(
@@ -446,7 +608,7 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                           color: Color(0xFF29B6F6),
                           strokeWidth: 2.5,
                         ))
-                      : attendance.isEmpty
+                      : _filteredAttendance.isEmpty
                           ? Center(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
@@ -455,11 +617,26 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                                       size: 64,
                                       color: Colors.white.withOpacity(0.20)),
                                   const SizedBox(height: 16),
-                                  Text('ยังไม่มีข้อมูลการลงเวลา',
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          color:
-                                              Colors.white.withOpacity(0.40))),
+                                  Text(
+                                    selectedDate == null
+                                        ? 'ยังไม่มีข้อมูลการลงเวลา'
+                                        : 'ไม่มีบันทึกในวันที่เลือก',
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        color:
+                                            Colors.white.withOpacity(0.40)),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  if (selectedDate != null) ...[
+                                    const SizedBox(height: 12),
+                                    TextButton(
+                                      onPressed: _pickDate,
+                                      child: const Text('เลือกวันที่ใหม่'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: const Color(0xFF29B6F6),
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             )
@@ -473,9 +650,9 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                                 child: ListView.builder(
                                   padding: const EdgeInsets.only(
                                       top: 4, bottom: 32),
-                                  itemCount: attendance.length,
+                                  itemCount: _filteredAttendance.length,
                                   itemBuilder: (_, i) =>
-                                      _buildCard(attendance[i], i),
+                                      _buildCard(_filteredAttendance[i], i),
                                 ),
                               ),
                             ),

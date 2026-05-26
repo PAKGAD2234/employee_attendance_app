@@ -1,6 +1,7 @@
 import 'package:employee_attendance_app/services/supabase_service.dart';
 import 'package:employee_attendance_app/view/admin_ui.dart';
 import 'package:employee_attendance_app/view/employee_home_ui.dart';
+import 'package:employee_attendance_app/view/home_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -174,6 +175,27 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   Color(0xF0000000),
                 ],
                 stops: [0.0, 0.45, 1.0],
+              ),
+            ),
+          ),
+
+          Positioned(
+            top: 16,
+            left: 16,
+            child: SafeArea(
+              child: IconButton(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HomepageUI()),
+                    (route) => false,
+                  );
+                },
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: Colors.white,
+                ),
+                tooltip: 'กลับไปหน้าแรก',
               ),
             ),
           ),

@@ -1,16 +1,1 @@
-{
-  "hosting": {
-    "public": "build/web",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  }
-}
+{"hosting":{"public":"build/web","ignore":["firebase.json","**/.*","**/node_modules/**"],"rewrites":[{"source":"**","destination":"/index.html"}]},"flutter":{"platforms":{"android":{"default":{"projectId":"massage-pos-4fb5b","appId":"1:279791437227:android:80374be3d1dff51441feee","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"massage-pos-4fb5b","configurations":{"android":"1:279791437227:android:80374be3d1dff51441feee","ios":"1:279791437227:ios:dd108b546d7c57de41feee","macos":"1:279791437227:ios:dd108b546d7c57de41feee","web":"1:279791437227:web:42f3dae019a993e741feee","windows":"1:279791437227:web:f0e066698cb1104a41feee"}}}}}}

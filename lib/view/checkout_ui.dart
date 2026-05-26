@@ -42,19 +42,21 @@ class _CheckOutUIState extends State<CheckOutUI>
     super.dispose();
   }
 
-  Future<void> pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 70,
-    );
-    if (picked != null) {
-      setState(() => imageFile = picked);
-  if (kIsWeb) {
-    imageBytes = await picked.readAsBytes();
+   Future<void> pickImage() async {
+  final picker = ImagePicker();
+  final picked = await picker.pickImage(
+    source: ImageSource.camera,
+    imageQuality: 70,
+  );
+  if (picked != null) {
+    // ดึง bytes ทุก platform ไม่แค่ Web
+    final bytes = await picked.readAsBytes();
+    setState(() {
+      imageFile = picked;
+      imageBytes = bytes;
+    });
   }
-    }
-  }
+}
 
   Future<Position> getLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -125,11 +127,16 @@ class _CheckOutUIState extends State<CheckOutUI>
     }
 
     _showSnackBar('เช็คเอาท์สำเร็จ ✓');
+    await supabase.functions.invoke('push-notify', body: {
+  'title': '🔚 เช็คเอาท์แล้ว',
+  'body': '${widget.employeeName} • ${_formatTime(now)}',
+   });
     if (mounted) Navigator.pop(context);
   } catch (e) {
     print('DEBUG error: $e');
     _showSnackBar('Error: $e', isError: true);
   }
+  
 
   setState(() => isLoading = false);
 }
@@ -364,9 +371,9 @@ class _CheckOutUIState extends State<CheckOutUI>
                                       child: Stack(
                                         fit: StackFit.expand,
                                         children: [
-                                            kIsWeb
+                                            imageBytes != null
                                               ? Image.memory(imageBytes!, fit: BoxFit.cover)
-                                              : Image.network(imageFile!.path, fit: BoxFit.cover),  
+                                              : const SizedBox(),
                                           Positioned(
                                             bottom: 12,
                                             right: 12,

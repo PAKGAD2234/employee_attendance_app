@@ -1,0 +1,32 @@
+Analyzing schedule_calendar_ui.dart...                          
+
+warning - The value of the field '_filterShiftId' isn't used - lib\view\schedule_calendar_ui.dart:28:11 - unused_field
+warning - Unnecessary cast - lib\view\schedule_calendar_ui.dart:140:18 - unnecessary_cast
+   info - Statements in an if should be enclosed in a block - lib\view\schedule_calendar_ui.dart:175:61 - curly_braces_in_flow_control_structures
+warning - The declaration '_selectedDayOverrides' isn't referenced - lib\view\schedule_calendar_ui.dart:181:12 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\schedule_calendar_ui.dart:411:35 - deprecated_member_use
+   info - Statements in an if should be enclosed in a block - lib\view\schedule_calendar_ui.dart:482:39 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\view\schedule_calendar_ui.dart:505:39 - curly_braces_in_flow_control_structures
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\view\schedule_calendar_ui.dart:699:23 - use_build_context_synchronously
+warning - The declaration '_filterChip' isn't referenced - lib\view\schedule_calendar_ui.dart:904:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\schedule_calendar_ui.dart:1073:38 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\schedule_calendar_ui.dart:1074:36 - deprecated_member_use
+   info - Unnecessary use of 'toList' in a spread - lib\view\schedule_calendar_ui.dart:1104:14 - unnecessary_to_list_in_spreads
+  error - Expected to find ';' - lib\view\schedule_calendar_ui.dart:1117:5 - expected_token
+warning - Dead code - lib\view\schedule_calendar_ui.dart:1117:6 - dead_code
+  error - Expected an identifier - lib\view\schedule_calendar_ui.dart:1117:6 - missing_identifier
+  error - Expected to find ';' - lib\view\schedule_calendar_ui.dart:1117:6 - expected_token
+  error - Unexpected text ';' - lib\view\schedule_calendar_ui.dart:1117:6 - unexpected_token
+  error - Expected an identifier - lib\view\schedule_calendar_ui.dart:1118:3 - missing_identifier
+  error - Unexpected text ';' - lib\view\schedule_calendar_ui.dart:1118:3 - unexpected_token
+   info - Unnecessary empty statement - lib\view\schedule_calendar_ui.dart:1118:4 - empty_statements
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\schedule_calendar_ui.dart:1171:50 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\schedule_calendar_ui.dart:1238:47 - deprecated_member_use
+warning - Unnecessary cast - lib\view\schedule_calendar_ui.dart:1394:17 - unnecessary_cast
+warning - Unnecessary cast - lib\view\schedule_calendar_ui.dart:1395:17 - unnecessary_cast
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\schedule_calendar_ui.dart:1458:34 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\schedule_calendar_ui.dart:1536:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\schedule_calendar_ui.dart:1593:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\view\schedule_calendar_ui.dart:1615:45 - deprecated_member_use
+
+28 issues found. (ran in 1.9s)

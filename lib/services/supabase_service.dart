@@ -41,26 +41,27 @@ class SupabaseService {
 
   // ดึงข้อมูลพนักงานทั้งหมด
   Future<List<Map<String, dynamic>>> getEmployees() async {
-    try {
-      final response = await _client
-          .from('employees')
-          .select()
-          .order('full_name', ascending: true);
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      print('Error fetching employees: $e');
-      rethrow;
-    }
+  try {
+    final response = await _client
+      .from('employees')
+      .select('*, work_sites(name)')
+      .neq('role', 'admin') // exclude admin users from regular employee lists
+      .order('full_name', ascending: true);
+    return List<Map<String, dynamic>>.from(response);
+  } catch (e) {
+    print('Error fetching employees: $e');
+    rethrow;
   }
+}
 
   // ดึงข้อมูล attendance ของพนักงานหนึ่งคน
   Future<List<Map<String, dynamic>>> getEmployeeAttendance(String employeeId) async {
     try {
       final response = await _client
-          .from('attendance')
-          .select()
-          .eq('employee_id', employeeId)
-          .order('work_date', ascending: false);
+    .from('attendance')
+    .select('*, employees(full_name, work_site_id, work_sites(name))')
+    .eq('employee_id', employeeId)
+    .order('work_date', ascending: false);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('Error fetching attendance: $e');
@@ -71,9 +72,10 @@ class SupabaseService {
   // ดึงข้อมูล attendance ทั้งหมดพร้อมข้อมูลพนักงาน
   Future<List<Map<String, dynamic>>> getAllAttendance() async {
     try {
-      final response = await _client
+        final response = await _client
           .from('attendance')
           .select('*, employees(full_name, email, department)')
+          .not('employees.role', 'eq', 'admin')
           .order('work_date', ascending: false);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -85,9 +87,10 @@ class SupabaseService {
   // ดึงข้อมูล attendance ตามวันที่
   Future<List<Map<String, dynamic>>> getAttendanceByDate(String date) async {
     try {
-      final response = await _client
+        final response = await _client
           .from('attendance')
           .select('*, employees(full_name, email, department)')
+          .not('employees.role', 'eq', 'admin')
           .eq('work_date', date)
           .order('checkin_time', ascending: true);
       return List<Map<String, dynamic>>.from(response);
@@ -132,26 +135,39 @@ class SupabaseService {
 
   // ดึงข้อมูล attendance พร้อมข้อมูลพนักงาน
   Future<List<Map<String, dynamic>>> getAttendanceWithImages() async {
-    try {
-      final response = await _client
-          .from('attendance')
-          .select('*, employees(full_name, email, department)')
-          .order('work_date', ascending: false);
-      
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      print('Error fetching attendance with images: $e');
-      rethrow;
-    }
+  try {
+    final response = await _client
+        .from('attendance')
+        .select('''
+          *,
+          employees(
+            full_name,
+            email,
+            department,
+            work_site_id,
+            employee_type
+          ),
+          work_sites(name)
+        ''')
+        // Exclude attendance records from admin accounts so admins don't appear in lists
+        .not('employees.role', 'eq', 'admin')
+        .order('work_date', ascending: false);
+
+    return List<Map<String, dynamic>>.from(response);
+  } catch (e) {
+    print('Error fetching attendance with images: $e');
+    rethrow;
   }
+}
 
   // ค้นหาพนักงานตามชื่อหรืออีเมล
   Future<List<Map<String, dynamic>>> searchEmployees(String query) async {
     try {
-      final response = await _client
+        final response = await _client
           .from('employees')
           .select()
-          .or('full_name.ilike.%$query%,email.ilike.%$query%');
+          .or('full_name.ilike.%$query%,email.ilike.%$query%')
+          .neq('role', 'admin'); // don't return admin accounts in search
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('Error searching employees: $e');
@@ -162,9 +178,10 @@ class SupabaseService {
   // ค้นหา attendance ตามสถานะ
   Future<List<Map<String, dynamic>>> getAttendanceByStatus(String status) async {
     try {
-      final response = await _client
+        final response = await _client
           .from('attendance')
           .select('*, employees(full_name, email, department)')
+          .not('employees.role', 'eq', 'admin')
           .eq('status', status)
           .order('work_date', ascending: false);
       return List<Map<String, dynamic>>.from(response);
@@ -177,9 +194,10 @@ class SupabaseService {
   // ดึงข้อมูล late attendance (สายเข้า)
   Future<List<Map<String, dynamic>>> getLateAttendance() async {
     try {
-      final response = await _client
+        final response = await _client
           .from('attendance')
           .select('*, employees(full_name, email, department)')
+          .not('employees.role', 'eq', 'admin')
           .eq('late', true)
           .order('work_date', ascending: false);
       return List<Map<String, dynamic>>.from(response);
@@ -222,6 +240,8 @@ class SupabaseService {
     required String phone,
     required String department,
     String? employeeCode,
+    String? workSiteId,                    // ← เพิ่ม
+    String employeeType = 'permanent',     // ← เพิ่ม
   }) async {
     try {
       // สร้าง username จากชื่ออังกฤษ ถ้ามี ถ้าไม่มีก็ใช้ชื่อเต็ม
@@ -241,6 +261,8 @@ class SupabaseService {
         'role': 'employee',
         'department': department,
         'status': 'active',
+        'work_site_id'   : workSiteId,     // ← เพิ่ม
+        'employee_type'  : employeeType,   // ← เพิ่ม
         'created_at': DateTime.now().toIso8601String(),
       }).select();
 
@@ -367,6 +389,43 @@ class SupabaseService {
       rethrow;
     }
   }
+
+  // ดึงรายชื่อ work sites ทั้งหมด
+Future<List<Map<String, dynamic>>> getWorkSites() async {
+  try {
+    final response = await _client
+        .from('work_sites')
+        .select()
+        .order('name', ascending: true);
+    return List<Map<String, dynamic>>.from(response);
+  } catch (e) {
+    print('Error fetching work sites: $e');
+    rethrow;
+  }
+}
+
+// สร้าง work site ใหม่
+Future<Map<String, dynamic>> createWorkSite({
+  required String name,
+  String? address,
+}) async {
+  try {
+    final response = await _client
+        .from('work_sites')
+        .insert({'name': name, 'address': address})
+        .select()
+        .single();
+    return response;
+  } catch (e) {
+    print('Error creating work site: $e');
+    rethrow;
+  }
+}
+
+// ลบ work site
+Future<void> deleteWorkSite(String id) async {
+  await _client.from('work_sites').delete().eq('id', id);
+}
 
   // ============== HELPER FUNCTIONS ==============
 
