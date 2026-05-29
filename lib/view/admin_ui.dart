@@ -770,46 +770,376 @@ class _AdminViewState extends State<AdminView> {
   // EMPLOYEE DELETE
   // ════════════════════════════════════════════
 
-  Future<void> deleteEmployee(String id, String name) async {
-    showDialog(
-      context: context,
-      builder:
-          (_) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Text("ยืนยันการลบ"),
-            content: Text("ต้องการลบ $name ใช่หรือไม่?"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("ยกเลิก"),
+   Future<void> deleteEmployee(String id, String name) async {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text("ยืนยันการลบ"),
+      content: Text("ต้องการลบ $name ออกจากระบบถาวรใช่หรือไม่?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("ยกเลิก"),
+        ),
+        TextButton(
+          onPressed: () async {
+            Navigator.pop(context);
+            try {
+              // ← เปลี่ยนจาก supabaseService.deleteEmployee เป็น hard delete
+              await supabase.from('employees').delete().eq('id', id);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("ลบพนักงานสำเร็จ")),
+                );
+                loadData();
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text("Error: $e")));
+              }
+            }
+          },
+          child: const Text("ลบถาวร", style: TextStyle(color: Colors.red)),
+        ),
+      ],
+    ),
+  );
+}
+// ════════════════════════════════════════════
+// EMPLOYEE EDIT
+// ════════════════════════════════════════════
+
+void _showEditEmployeeForm(Map emp) {
+  final nameCtrl       = TextEditingController(text: emp['full_name'] ?? '');
+  final usernameCtrl   = TextEditingController(text: emp['username'] ?? '');
+  final emailCtrl      = TextEditingController(text: emp['email'] ?? '');
+  final phoneCtrl      = TextEditingController(text: emp['phone'] ?? '');
+  final deptCtrl       = TextEditingController(text: emp['department'] ?? '');
+  final positionCtrl   = TextEditingController(text: emp['position'] ?? '');
+  final empCodeCtrl    = TextEditingController(text: emp['employee_code'] ?? '');
+  String? selectedSiteId = emp['work_site_id']?.toString();
+  String  selectedStatus  = emp['status'] ?? 'active';
+  String? selectedType    = emp['employment_type'];
+
+  final empTypes = ['full_time', 'part_time', 'contract', 'intern'];
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setModal) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: blue100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
               ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  try {
-                    await supabaseService.deleteEmployee(id);
-                    if (mounted) {
+               Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.pop(ctx),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: blue50,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: blue100),
+                              ),
+                              child: const Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: blue600,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.edit_rounded, color: blue600, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'แก้ไขข้อมูล — ${emp['full_name'] ?? ''}',
+                              style: const TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.bold, color: blue800,
+                              ),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+               SizedBox(height: 16),
+
+              // ── ข้อมูลส่วนตัว ──────────────────────
+              _editSectionLabel('ข้อมูลส่วนตัว'),
+              const SizedBox(height: 8),
+              _editField(nameCtrl,     'ชื่อ-นามสกุล *',  Icons.person_rounded),
+              const SizedBox(height: 10),
+              _editField(usernameCtrl, 'Username',          Icons.alternate_email),
+              const SizedBox(height: 10),
+              _editField(emailCtrl,    'Email',             Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress),
+              const SizedBox(height: 10),
+              _editField(phoneCtrl,    'เบอร์โทรศัพท์',   Icons.phone_outlined,
+                  keyboardType: TextInputType.phone),
+              const SizedBox(height: 16),
+
+              // ── ข้อมูลการทำงาน ─────────────────────
+              _editSectionLabel('ข้อมูลการทำงาน'),
+              const SizedBox(height: 8),
+              _editField(deptCtrl,     'แผนก',            Icons.corporate_fare_rounded),
+              const SizedBox(height: 10),
+              _editField(positionCtrl, 'ตำแหน่ง',        Icons.military_tech_outlined),
+              const SizedBox(height: 10),
+              _editField(empCodeCtrl,  'รหัสพนักงาน',    Icons.tag_rounded),
+              const SizedBox(height: 10),
+
+              // สาขา / work site
+              _editSectionLabel('สาขา / บริษัท'),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: blue50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: blue100),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String?>(
+                    value: selectedSiteId,
+                    isExpanded: true,
+                    hint: const Text('ไม่ระบุสาขา',
+                        style: TextStyle(fontSize: 13, color: gray400)),
+                    style: const TextStyle(
+                        fontSize: 13, color: Color(0xFF1a2a3a)),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('— ไม่ระบุ —',
+                            style: TextStyle(color: gray400)),
+                      ),
+                      ..._workSites.map((s) => DropdownMenuItem<String?>(
+                            value: s['id'].toString(),
+                            child: Text(s['name'] ?? '-'),
+                          )),
+                    ],
+                    onChanged: (v) => setModal(() => selectedSiteId = v),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // ประเภทการจ้าง
+              _editSectionLabel('ประเภทการจ้าง'),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: blue50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: blue100),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String?>(
+                    value: selectedType,
+                    isExpanded: true,
+                    hint: const Text('ไม่ระบุ',
+                        style: TextStyle(fontSize: 13, color: gray400)),
+                    style: const TextStyle(
+                        fontSize: 13, color: Color(0xFF1a2a3a)),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('— ไม่ระบุ —',
+                              style: TextStyle(color: gray400))),
+                      ...empTypes.map((t) => DropdownMenuItem<String?>(
+                            value: t,
+                            child: Text(t),
+                          )),
+                    ],
+                    onChanged: (v) => setModal(() => selectedType = v),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // สถานะ
+              _editSectionLabel('สถานะพนักงาน'),
+              const SizedBox(height: 8),
+              Row(
+                children: ['active', 'inactive'].map((s) {
+                  final active = selectedStatus == s;
+                  final isActive = s == 'active';
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setModal(() => selectedStatus = s),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: EdgeInsets.only(right: s == 'active' ? 8 : 0),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: active
+                              ? (isActive ? teal400 : red400)
+                              : (isActive ? teal50 : red50),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isActive ? teal400 : red400,
+                            width: active ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            isActive ? '✓ Active' : '✗ Inactive',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: active
+                                  ? Colors.white
+                                  : (isActive ? teal400 : red400),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+
+              // ── Save button ────────────────────────
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final name = nameCtrl.text.trim();
+                    if (name.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("ลบพนักงานสำเร็จ")),
+                        const SnackBar(
+                            content: Text('❌ กรุณากรอกชื่อ-นามสกุล')),
                       );
-                      loadData();
+                      return;
                     }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                    try {
+                      await supabase.from('employees').update({
+                        'full_name':       name,
+                        'username':        usernameCtrl.text.trim().isEmpty
+                            ? null
+                            : usernameCtrl.text.trim(),
+                        'email':           emailCtrl.text.trim().isEmpty
+                            ? null
+                            : emailCtrl.text.trim(),
+                        'phone':           phoneCtrl.text.trim().isEmpty
+                            ? null
+                            : phoneCtrl.text.trim(),
+                        'department':      deptCtrl.text.trim().isEmpty
+                            ? null
+                            : deptCtrl.text.trim(),
+                        'position':        positionCtrl.text.trim().isEmpty
+                            ? null
+                            : positionCtrl.text.trim(),
+                        'employee_code':   empCodeCtrl.text.trim().isEmpty
+                            ? null
+                            : empCodeCtrl.text.trim(),
+                        'work_site_id':    selectedSiteId,
+                        'employment_type': selectedType,
+                        'status':          selectedStatus,
+                        'updated_at':      DateTime.now().toIso8601String(),
+                      }).eq('id', emp['id']);
+
+                      await loadData();
+                      if (mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('✅ แก้ไขข้อมูลพนักงานแล้ว')),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('❌ Error: $e')),
+                        );
+                      }
                     }
-                  }
-                },
-                child: const Text("ลบ", style: TextStyle(color: Colors.red)),
+                  },
+                  icon: const Icon(Icons.save_rounded, size: 16),
+                  label: const Text(
+                    'บันทึกการแก้ไข',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: blue600,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
               ),
             ],
           ),
+        ),
+      ),
+    ),
+  );
+}
+
+// helper widgets สำหรับ edit form
+Widget _editSectionLabel(String text) => Padding(
+  padding: const EdgeInsets.only(bottom: 2),
+  child: Text(text,
+      style: const TextStyle(
+          fontSize: 12, fontWeight: FontWeight.w600, color: blue800)),
+);
+
+Widget _editField(
+  TextEditingController ctrl,
+  String hint,
+  IconData icon, {
+  TextInputType keyboardType = TextInputType.text,
+}) =>
+    TextField(
+      controller: ctrl,
+      keyboardType: keyboardType,
+      style: const TextStyle(fontSize: 13, color: Color(0xFF1a2a3a)),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(fontSize: 12, color: gray400),
+        prefixIcon: Icon(icon, size: 16, color: blue400),
+        filled: true,
+        fillColor: blue50,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: blue100),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: blue100),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: blue600, width: 1.5),
+        ),
+      ),
     );
-  }
 
   // ════════════════════════════════════════════
   // HELPERS
@@ -1884,27 +2214,30 @@ class _AdminViewState extends State<AdminView> {
                 ],
               ),
             ),
-            Column(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: isActive ? teal400 : gray400,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => deleteEmployee(emp['id'], name),
-                  child: const Icon(
-                    Icons.delete_outline,
-                    color: red400,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
+             // เดิม
+
+// ใหม่ → เพิ่มปุ่ม edit ไว้ด้านบน
+Column(
+  children: [
+    Container(
+      width: 8, height: 8,
+      decoration: BoxDecoration(
+        color: isActive ? teal400 : gray400,
+        shape: BoxShape.circle,
+      ),
+    ),
+    const SizedBox(height: 6),
+    GestureDetector(
+      onTap: () => _showEditEmployeeForm(emp),          // ← ใหม่
+      child: const Icon(Icons.edit_outlined, color: blue600, size: 20),
+    ),
+    const SizedBox(height: 6),
+    GestureDetector(
+      onTap: () => deleteEmployee(emp['id'], name),
+      child: const Icon(Icons.delete_outline, color: red400, size: 20),
+    ),
+  ],
+),
           ],
         ),
       ),

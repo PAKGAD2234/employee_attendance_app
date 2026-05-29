@@ -1201,7 +1201,7 @@ class _ScheduleCalendarUIState extends State<ScheduleCalendarUI>
               crossAxisCount: 7,
               mainAxisSpacing: 4,
               crossAxisSpacing: 4,
-              childAspectRatio: 0.65,
+              childAspectRatio: 0.35,
             ),
             itemCount: firstWeekday + daysInMonth,
             itemBuilder: (_, idx) {
@@ -1317,21 +1317,21 @@ class _ScheduleCalendarUIState extends State<ScheduleCalendarUI>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  firstName,
-                                  style: const TextStyle(
-                                    fontSize: 7,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF1a2a3a),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                 Text(
+                                      firstName,
+                                      style: TextStyle(
+                                        fontSize: _responsiveFontSize(context, mobile: 6, desktop: 10),
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF1a2a3a),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                 if (startStr != null && startStr != '--:--')
                                   Text(
                                     '$startStr-${endStr ?? ''}',
                                     style: TextStyle(
-                                      fontSize: 7,
+                                      fontSize: _responsiveFontSize(context, mobile: 5, desktop: 8),
                                       color: shiftColor,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -1482,7 +1482,7 @@ class _ScheduleCalendarUIState extends State<ScheduleCalendarUI>
                       if (shift != null) ...[
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: schedColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(4),
@@ -1864,6 +1864,13 @@ class _ScheduleCalendarUIState extends State<ScheduleCalendarUI>
 
   String _toDateStr(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      double _responsiveFontSize(BuildContext context, {
+  required double mobile,
+  required double desktop,
+}) {
+  final width = MediaQuery.of(context).size.width;
+  return width < 600 ? mobile : desktop;
+}
 
   String _toTimeStr(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';

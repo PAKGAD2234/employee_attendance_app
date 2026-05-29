@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
       // ตอบกลับพนักงาน
       await replyLine(
         event.replyToken,
-        `✅ รับทราบแล้วครับ ${employeeName}\nไปทำงานให้สนุกนะครับ! 💪`
+        `✅ รับทราบแล้วครับ ${employeeName}\nไปทำงานให้สนุกนะครับ! 💪\n\n📲 อย่าลืมเช็คอินด้วยนะครับ\nhttps://timetrack.opmatch.com`
       )
 
       // แจ้ง Admin ว่าพนักงานยืนยันแล้ว

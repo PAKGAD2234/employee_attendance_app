@@ -51,5 +51,13 @@
 	<string>This app needs camera access to take photos for attendance.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs photo library access to select photos.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+  <string>แอปต้องการตำแหน่งเพื่อยืนยันว่าคุณอยู่ในสถานที่ทำงาน</string>
+ 
+  <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+  <string>แอปต้องการตำแหน่งเพื่อยืนยันการเข้างาน</string>
+ 
+  <key>NSCameraUsageDescription</key>
+  <string>แอปต้องการกล้องเพื่อถ่ายรูปยืนยันการเช็คอิน/เช็คเอาท์</string>
 </dict>
 </plist>

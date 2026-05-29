@@ -43,12 +43,9 @@ Deno.serve(async (req) => {
 
   const checkinTime = new Date(record.checkin_time)
   const timeStr = `${String(checkinTime.getHours()).padStart(2,'0')}:${String(checkinTime.getMinutes()).padStart(2,'0')}`
-  const isLate = record.late === true
   const siteName = site?.name ?? '-'
 
-  const message = isLate
-    ? `⚠️ ${emp.full_name} เช็คอินสาย!\n⏰ เวลา: ${timeStr} น.\n📍 สาขา: ${siteName}`
-    : `✅ ${emp.full_name} เช็คอินแล้ว\n⏰ เวลา: ${timeStr} น.\n📍 สาขา: ${siteName}`
+  const message = `✅ ${emp.full_name} เช็คอินแล้ว\n⏰ เวลา: ${timeStr} น.\n📍 สาขา: ${siteName}`
 
   // ดึง LINE user_id ของ Admin และเจ้าของทุกคน
   const { data: recipients } = await supabase
