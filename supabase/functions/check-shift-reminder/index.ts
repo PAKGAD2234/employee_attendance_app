@@ -25,6 +25,7 @@ async function getRecipients() {
   const { data } = await supabase
     .from('line_recipients')
     .select('line_user_id')
+    .eq('role', 'admin')  // ✅ เฉพาะ admin เท่านั้น
   return (data ?? []).filter(r => !r.line_user_id.startsWith('PLACEHOLDER'))
 }
 
@@ -32,12 +33,9 @@ Deno.serve(async () => {
   const now = new Date(new Date().getTime() + 7 * 60 * 60 * 1000)
   const todayStr = now.toISOString().split('T')[0]
   const todayDay = now.getDay()
-
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
-  const currentHHMM = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
 
   console.log('เวลาไทย:', now.toISOString())
-  console.log('currentHHMM:', currentHHMM)
   console.log('nowMinutes:', nowMinutes)
 
   const { data: schedules } = await supabase
@@ -69,7 +67,7 @@ Deno.serve(async () => {
     ...(overrides ?? []).map(o => ({
       emp: o.employees as any,
       shiftStart: (o.custom_start_time as string)?.substring(0, 5)
-                ?? (o.shift_templates as any)?.start_time?.substring(0, 5)
+        ?? (o.shift_templates as any)?.start_time?.substring(0, 5)
     }))
   ].filter(s => s.emp && s.shiftStart)
 
@@ -81,8 +79,7 @@ Deno.serve(async () => {
     return true
   })
 
-  console.log('schedules จาก DB:', schedules?.length ?? 0)
-  console.log('allSchedules:', JSON.stringify(uniqueSchedules))
+  console.log('uniqueSchedules:', JSON.stringify(uniqueSchedules))
 
   if (uniqueSchedules.length === 0) {
     return new Response('no schedules', { status: 200 })
@@ -93,11 +90,13 @@ Deno.serve(async () => {
   for (const { emp, shiftStart } of uniqueSchedules) {
     if (!shiftStart || !emp) continue
 
-    const shiftMinutes = parseInt(shiftStart.split(':')[0]) * 60 + parseInt(shiftStart.split(':')[1])
+    const shiftMinutes =
+      parseInt(shiftStart.split(':')[0]) * 60 + parseInt(shiftStart.split(':')[1])
     const diffFromNow = (shiftMinutes - nowMinutes + 24 * 60) % (24 * 60)
 
     console.log(`${emp.full_name} shiftStart:${shiftStart} diffFromNow:${diffFromNow}`)
 
+    // ---- เตือนล่วงหน้า 30 นาที ----
     if (diffFromNow === 30 && emp.line_user_id) {
       const flexMessage = {
         to: emp.line_user_id,
@@ -124,7 +123,11 @@ Deno.serve(async () => {
               spacing: 'sm',
               contents: [
                 { type: 'text', text: `สวัสดี ${emp.full_name}`, weight: 'bold' },
-                { type: 'text', text: `กะงานเริ่ม ${shiftStart} น. (อีก 30 นาที)`, color: '#555555' }
+                {
+                  type: 'text',
+                  text: `กะงานเริ่ม ${shiftStart} น. (อีก 30 นาที)`,
+                  color: '#555555'
+                }
               ]
             },
             footer: {
@@ -155,10 +158,11 @@ Deno.serve(async () => {
         body: JSON.stringify(flexMessage)
       })
       const resBody = await res.json()
-      console.log('LINE response:', JSON.stringify(resBody))
+      console.log('LINE flex response:', JSON.stringify(resBody))
     }
 
-    if (diffFromNow === 0 ) {
+    // ---- ถึงเวลางานแล้ว ยังไม่เช็คอิน → แจ้ง Admin ----
+    if (diffFromNow === 0) {
       const { data: attendance } = await supabase
         .from('attendance')
         .select('id, checkin_time, confirmed_arrival')
@@ -166,13 +170,14 @@ Deno.serve(async () => {
         .eq('work_date', todayStr)
         .maybeSingle()
 
+      // เช็คอินแล้วจริง → ข้ามไป ไม่ต้องแจ้ง
       if (attendance?.checkin_time) continue
 
       const confirmed = attendance?.confirmed_arrival === true
       const alertMsg = confirmed
         ? `⚠️ ${emp.full_name} กดยืนยันว่าจะมาแล้ว แต่ยังไม่เช็คอิน!\n⏰ กะงาน: ${shiftStart} น.\n📞 ${emp.phone ?? 'ไม่มีเบอร์'}`
-        : `🚨 ${emp.full_name} ไม่ตอบสนองและไม่เช็คอิน!\n⏰ กะงาน: ${shiftStart} น.\n📞 ${emp.phone ?? 'ไม่มีเบอร์'}\nโทรหาได้เลย!`
-
+        : `🚨 ${emp.full_name} ไม่ได้ยืนยันและไม่เช็คอิน!\n⏰ กะงาน: ${shiftStart} น.\n📞 ${emp.phone ?? 'ไม่มีเบอร์'}\nโทรหาได้เลย!`
+         
       for (const r of recipients) {
         await pushLine(r.line_user_id, alertMsg)
       }

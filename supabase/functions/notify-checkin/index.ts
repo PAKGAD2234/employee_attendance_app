@@ -49,16 +49,23 @@ Deno.serve(async (req) => {
 
   // ดึง LINE user_id ของ Admin และเจ้าของทุกคน
   const { data: recipients } = await supabase
-    .from('line_recipients')
-    .select('line_user_id')
+  .from('line_recipients')
+  .select('line_user_id, role, work_site_id')
 
-  if (!recipients) return new Response('no recipients', { status: 200 })
+  if (!recipients || recipients.length === 0) return new Response('no recipients', { status: 200 })
 
-  // ส่งให้ทุกคนใน line_recipients
-  for (const r of recipients) {
-    if (r.line_user_id.startsWith('PLACEHOLDER')) continue
+    for (const r of recipients ?? []) {
+  if (r.line_user_id.startsWith('PLACEHOLDER')) continue
+
+  if (r.role === 'admin') {
+    // admin รับทุกสาขา
+    await pushLine(r.line_user_id, message)
+  } else if (r.role === 'owner' && r.work_site_id === emp.work_site_id) {
+    // owner รับเฉพาะสาขาตัวเอง
     await pushLine(r.line_user_id, message)
   }
+}
+
 
   return new Response('ok', { status: 200 })
 })

@@ -289,25 +289,17 @@ class _CheckInUIState extends State<CheckInUI>
         'work_site_id': empData['work_site_id'],
       });
 
-      // ── Notification ───────────────────────────────────────────────────
-      await _supabase.from('notifications').insert({
-        'type': isLate ? 'late' : 'checkin',
-        'employee_name': widget.employeeName,
-        'employee_phone': widget.employeePhone,
-        'message': isLate
-            ? '⚠️ ${widget.employeeName} เช็คอินสาย'
-            : '✅ ${widget.employeeName} เช็คอินแล้ว',
-        'work_site_id': empData['work_site_id'],
-        'is_read': false,
-      });
-
-      // Optional push notification edge function
-      try {
-        await _supabase.functions.invoke('push-notify', body: {
-          'title': isLate ? '⚠️ มาสาย' : '✅ เช็คอินแล้ว',
-          'body': '${widget.employeeName} • ${_timeStr(now)}',
-        });
-      } catch (_) {} // non-critical
+      // ── Notification ──────────────────────────────────────────────────
+              await _supabase.from('notifications').insert({
+                'type': isLate ? 'late' : 'checkin',
+                'employee_name': widget.employeeName,
+                'employee_phone': widget.employeePhone,
+                'message': isLate
+                    ? '⚠️ ${widget.employeeName} เช็คอินสาย'
+                    : '✅ ${widget.employeeName} เช็คอินแล้ว',
+                'work_site_id': empData['work_site_id'],
+                'is_read': false,
+              });
 
       _snack(isLate ? 'เช็คอินสำเร็จ (สาย) ⚠️' : 'เช็คอินสำเร็จ ✓');
       if (mounted) Navigator.pop(context);

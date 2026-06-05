@@ -821,9 +821,10 @@ void _showEditEmployeeForm(Map emp) {
   final empCodeCtrl    = TextEditingController(text: emp['employee_code'] ?? '');
   String? selectedSiteId = emp['work_site_id']?.toString();
   String  selectedStatus  = emp['status'] ?? 'active';
-  String? selectedType    = emp['employment_type'];
+  String? selectedType = emp['employee_type'];
+  
 
-  final empTypes = ['full_time', 'part_time', 'contract', 'intern'];
+  final empTypes = ['full_time', 'part_time', 'contract', 'intern', 'daily', 'permanent'];
 
   showModalBottomSheet(
     context: context,
@@ -1036,31 +1037,19 @@ void _showEditEmployeeForm(Map emp) {
                       return;
                     }
                     try {
-                      await supabase.from('employees').update({
-                        'full_name':       name,
-                        'username':        usernameCtrl.text.trim().isEmpty
-                            ? null
-                            : usernameCtrl.text.trim(),
-                        'email':           emailCtrl.text.trim().isEmpty
-                            ? null
-                            : emailCtrl.text.trim(),
-                        'phone':           phoneCtrl.text.trim().isEmpty
-                            ? null
-                            : phoneCtrl.text.trim(),
-                        'department':      deptCtrl.text.trim().isEmpty
-                            ? null
-                            : deptCtrl.text.trim(),
-                        'position':        positionCtrl.text.trim().isEmpty
-                            ? null
-                            : positionCtrl.text.trim(),
-                        'employee_code':   empCodeCtrl.text.trim().isEmpty
-                            ? null
-                            : empCodeCtrl.text.trim(),
-                        'work_site_id':    selectedSiteId,
-                        'employment_type': selectedType,
-                        'status':          selectedStatus,
-                        'updated_at':      DateTime.now().toIso8601String(),
-                      }).eq('id', emp['id']);
+                       await supabase.from('employees').update({
+                                'full_name':     name,
+                                'username':      usernameCtrl.text.trim().isEmpty ? null : usernameCtrl.text.trim(),
+                                'email':         emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(),
+                                'phone':         phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+                                'department':    deptCtrl.text.trim().isEmpty ? null : deptCtrl.text.trim(),
+                                // 'position':   ← ลบออก ไม่มี column นี้
+                                'employee_code': empCodeCtrl.text.trim().isEmpty ? null : empCodeCtrl.text.trim(),
+                                'work_site_id':  selectedSiteId,
+                                'employee_type': selectedType,   // ← แก้จาก employment_type
+                                'status':        selectedStatus,
+                                'updated_at':    DateTime.now().toIso8601String(),
+                              }).eq('id', emp['id']);
 
                       await loadData();
                       if (mounted) {
