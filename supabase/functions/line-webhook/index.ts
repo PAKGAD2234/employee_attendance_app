@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const LINE_TOKEN = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN')!
+const LINE_GROUP_ID = Deno.env.get('LINE_GROUP_ID')!
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
@@ -20,7 +21,7 @@ async function replyLine(replyToken: string, message: string) {
   })
 }
 
-async function pushLine(userId: string, message: string) {
+async function pushLine(to: string, message: string) {
   await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: {
@@ -28,7 +29,7 @@ async function pushLine(userId: string, message: string) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      to: userId,
+      to,
       messages: [{ type: 'text', text: message }]
     })
   })
@@ -41,6 +42,7 @@ Deno.serve(async (req) => {
 
   console.log('LINE event type:', event.type)
   console.log('LINE user_id:', event?.source?.userId)
+  console.log('LINE group_id:', event?.source?.groupId)
 
   if (event.type === 'postback') {
     const data = event.postback.data as string
@@ -55,36 +57,23 @@ Deno.serve(async (req) => {
 
       const employeeName = emp?.full_name ?? 'พนักงาน'
 
-      // ✅ upsert confirmed_arrival = true
-      await supabase
-        .from('attendance')
-        .upsert({
-          employee_id: employeeId,
-          work_date: workDate,
-          confirmed_arrival: true,
-          confirmed_at: new Date().toISOString()
-        }, {
-          onConflict: 'employee_id,work_date',
-          ignoreDuplicates: false
-        })
+      // ✅ บันทึกสถานะยืนยันว่าจะมาทำงานลงตาราง attendance
+      await supabase.from('attendance').upsert({
+        employee_id: employeeId,
+        work_date: workDate,
+        confirmed_arrival: true
+      }, { onConflict: 'employee_id,work_date' })
 
       await replyLine(
         event.replyToken,
         `✅ รับทราบแล้วครับ ${employeeName}\nไปทำงานให้สนุกนะครับ! 💪\n\n📲 อย่าลืมเช็คอินด้วยนะครับ\nhttps://timetrack.opmatch.com`
       )
 
-      // แจ้ง Admin ทุกคน (role = admin ไม่ filter สาขา)
-      const { data: recipients } = await supabase
-        .from('line_recipients')
-        .select('line_user_id')
-        .eq('role', 'admin')
-
-      for (const r of recipients ?? []) {
-        if (r.line_user_id.startsWith('PLACEHOLDER')) continue
-        await pushLine(r.line_user_id,
-          `📋 ${employeeName} ยืนยันว่าจะมาทำงานแล้ว\n📅 วันที่: ${workDate}`
-        )
-      }
+      // ✅ แจ้งเข้ากลุ่ม LINE กลุ่มเดียว แทนการ loop ส่งหา admin ทีละคน
+      await pushLine(
+        LINE_GROUP_ID,
+        `📋 ${employeeName} ยืนยันว่าจะมาทำงานแล้ว\n📅 วันที่: ${workDate}`
+      )
     }
   }
 

@@ -8,6 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/supabase_service.dart';
 import 'add_employee_ui.dart';
 import '../services/notification_service.dart';
+import '../utils/time_utils.dart';
+import 'export_report_ui.dart';
 
 class AdminView extends StatefulWidget {
   const AdminView({super.key});
@@ -542,7 +544,7 @@ class _AdminViewState extends State<AdminView> {
       _siteLatController.text = site['gps_lat']?.toString() ?? '';
       _siteLngController.text = site['gps_lng']?.toString() ?? '';
       _siteAddressController.text = site['address'] ?? '';
-      _siteRadius = site['radius_meters'] ?? 100;
+      _siteRadius = site['gps_radius'] ?? 100;
     } else {
       _siteNameController.clear();
       _siteLatController.clear();
@@ -1135,23 +1137,11 @@ Widget _editField(
   // ════════════════════════════════════════════
 
   String _formatTime(String? iso) {
-    if (iso == null) return '--:--';
-    try {
-      final dt = DateTime.parse(iso);
-      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    } catch (_) {
-      return '--:--';
-    }
+    return formatAttendanceTime(iso, fallback: '--:--');
   }
 
   String _formatDate(String? iso) {
-    if (iso == null) return '-';
-    try {
-      final dt = DateTime.parse(iso);
-      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
-    } catch (_) {
-      return iso;
-    }
+    return formatAttendanceDate(iso, fallback: iso ?? '-');
   }
 
   String _getImageUrl(String? val) {
@@ -1339,6 +1329,15 @@ Widget _editField(
           MaterialPageRoute(builder: (_) => ScheduleCalendarUI()))
           .then((_) => loadData()),
     },
+    {
+  'title': 'Export Report',
+  'subtitle': 'สรุปสถิติ + Export CSV / PDF รายเดือน',
+  'icon': Icons.summarize_rounded,
+  'color': const Color(0xFF7F77DD),
+  'bg': const Color(0xFFEDEBFB),
+  'onTap': () => Navigator.push(context,
+      MaterialPageRoute(builder: (_) => const ExportReportUI())),
+},
   ];
 
   return ListView(
@@ -1908,8 +1907,6 @@ Widget _editField(
       .length;
   final lateCount = filtered.where((r) => r['late'] == true).length;
 
-  // ลบบรรทัดเดิมออก: final absentCount = employees.length - filtered.length;
-  // ใส่แทนด้วยนี้ ↓
   final checkedInIds = filtered
       .map((r) => (r['employees'] as Map?)?['id']?.toString())
       .whereType<String>()
@@ -2204,8 +2201,6 @@ Widget _editField(
               ),
             ),
              // เดิม
-
-// ใหม่ → เพิ่มปุ่ม edit ไว้ด้านบน
 Column(
   children: [
     Container(
@@ -2217,7 +2212,7 @@ Column(
     ),
     const SizedBox(height: 6),
     GestureDetector(
-      onTap: () => _showEditEmployeeForm(emp),          // ← ใหม่
+      onTap: () => _showEditEmployeeForm(emp),         
       child: const Icon(Icons.edit_outlined, color: blue600, size: 20),
     ),
     const SizedBox(height: 6),
@@ -2662,7 +2657,7 @@ Column(
     final address = site['address'] ?? '';
     final lat = site['gps_lat'];
     final lng = site['gps_lng'];
-    final radius = site['radius_meters'] ?? 100;
+    final radius = site['gps_radius'] ?? 100;
 
     final siteEmployees =
         employees

@@ -168,7 +168,7 @@ class _WeeklyScheduleUIState extends State<WeeklyScheduleUI> {
   }
 
   // ════════════════════════════════════════════
-  // SAVE — upsert 1 วัน
+  // SAVE — ปิดแถว active แล้ว insert 1 วัน
   // ════════════════════════════════════════════
   Future<void> _saveDay({
     required int dayOfWeek,
@@ -181,12 +181,14 @@ class _WeeklyScheduleUIState extends State<WeeklyScheduleUI> {
     final today = DateTime.now().toIso8601String().substring(0, 10);
 
     try {
+      await supabase
+          .from('employee_weekly_schedules')
+          .update({'effective_until': today})
+          .eq('employee_id', empId)
+          .eq('day_of_week', dayOfWeek)
+          .isFilter('effective_until', null);
+
       if (shiftId == null && customStart == null) {
-        await supabase
-            .from('employee_weekly_schedules')
-            .delete()
-            .eq('employee_id', empId)
-            .eq('day_of_week', dayOfWeek);
         setState(() => _weeklyMap.remove(dayOfWeek));
       } else {
         final payload = {
@@ -199,10 +201,7 @@ class _WeeklyScheduleUIState extends State<WeeklyScheduleUI> {
           'effective_from':    today,
           'effective_until':   null,
         };
-        await supabase.from('employee_weekly_schedules').upsert(
-          payload,
-          onConflict: 'employee_id,day_of_week,effective_from',
-        );
+        await supabase.from('employee_weekly_schedules').insert(payload);
       }
       await _loadAll();
       if (mounted) {
@@ -215,7 +214,7 @@ class _WeeklyScheduleUIState extends State<WeeklyScheduleUI> {
   }
 
   // ════════════════════════════════════════════
-  // SAVE BULK — upsert หลายวันพร้อมกัน
+  // SAVE BULK — ปิดแถว active แล้ว insert หลายวันพร้อมกัน
   // ════════════════════════════════════════════
   Future<void> _saveBulk({
     required List<int> days,
@@ -230,13 +229,14 @@ class _WeeklyScheduleUIState extends State<WeeklyScheduleUI> {
 
     try {
       for (final day in days) {
-        if (isOff) {
-          await supabase
-              .from('employee_weekly_schedules')
-              .delete()
-              .eq('employee_id', empId)
-              .eq('day_of_week', day);
-        } else {
+        await supabase
+            .from('employee_weekly_schedules')
+            .update({'effective_until': today})
+            .eq('employee_id', empId)
+            .eq('day_of_week', day)
+            .isFilter('effective_until', null);
+
+        if (!isOff) {
           final payload = {
             'employee_id':       empId,
             'day_of_week':       day,
@@ -247,10 +247,7 @@ class _WeeklyScheduleUIState extends State<WeeklyScheduleUI> {
             'effective_from':    today,
             'effective_until':   null,
           };
-          await supabase.from('employee_weekly_schedules').upsert(
-            payload,
-            onConflict: 'employee_id,day_of_week,effective_from',
-          );
+          await supabase.from('employee_weekly_schedules').insert(payload);
         }
       }
       await _loadAll();

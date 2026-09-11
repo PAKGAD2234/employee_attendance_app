@@ -6,8 +6,9 @@ const supabase = createClient(
 )
 
 const LINE_TOKEN = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN')!
+const LINE_GROUP_ID = Deno.env.get('LINE_GROUP_ID')!
 
-async function pushLine(userId: string, message: string) {
+async function pushLine(to: string, message: string) {
   await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: {
@@ -15,10 +16,16 @@ async function pushLine(userId: string, message: string) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      to: userId,
+      to,
       messages: [{ type: 'text', text: message }]
     })
   })
+}
+
+function parseAsBangkok(s?: string) {
+  if (!s) return null;
+  if (/[Zz]|[+\-]\d{2}:\d{2}$/.test(s)) return new Date(s);
+  return new Date(s + '+07:00');
 }
 
 Deno.serve(async (req) => {
@@ -46,25 +53,37 @@ Deno.serve(async (req) => {
     .maybeSingle()
 
   // แปลงเวลาเป็น timezone ไทย
-  const checkoutTime = new Date(record.checkout_time)
-  const timeStr = `${String(checkoutTime.getHours()).padStart(2, '0')}:${String(checkoutTime.getMinutes()).padStart(2, '0')}`
+  const checkoutTime = parseAsBangkok(record.checkout_time);
+  if (!checkoutTime) {
+    console.log('Invalid checkout_time:', record.checkout_time);
+    return new Response('skip', { status: 200 });
+  }
+  const timeStr = new Intl.DateTimeFormat('th-TH', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Bangkok'
+  }).format(checkoutTime)
   const siteName = site?.name ?? '-'
 
   const message = `🔚 ${emp.full_name} เช็คเอาท์แล้ว\n⏰ เวลา: ${timeStr} น.\n📍 สาขา: ${siteName}`
 
-   const { data: recipients } = await supabase
-  .from('line_recipients')
-  .select('line_user_id, role, work_site_id')
+  // ✅ แจ้ง admin เข้ากลุ่ม LINE กลุ่มเดียว
+  await pushLine(LINE_GROUP_ID, message)
+
+  // เหลือใช้เฉพาะ owner ตามสาขา
+  const { data: recipients } = await supabase
+    .from('line_recipients')
+    .select('line_user_id, role, work_site_id')
+    .eq('role', 'owner')
 
   for (const r of recipients ?? []) {
-  if (r.line_user_id.startsWith('PLACEHOLDER')) continue
+    if (r.line_user_id.startsWith('PLACEHOLDER')) continue
 
-  if (r.role === 'admin') {
-    await pushLine(r.line_user_id, message)
-  } else if (r.role === 'owner' && r.work_site_id === emp.work_site_id) {
-    await pushLine(r.line_user_id, message)
+    if (r.work_site_id === emp.work_site_id) {
+      await pushLine(r.line_user_id, message)
+    }
   }
-}
 
   return new Response('ok', { status: 200 })
 })

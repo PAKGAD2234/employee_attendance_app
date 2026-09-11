@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
+import '../utils/time_utils.dart';
 
 class EmployeeHistoryUI extends StatefulWidget {
   final String employeeId;
@@ -97,17 +98,12 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
   }
 
   String _formatTime(String isoString) {
-    try {
-      final dt = DateTime.parse(isoString).toLocal();
-      return "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
-    } catch (_) {
-      return '-';
-    }
+    return formatAttendanceTime(isoString);
   }
 
   String _formatDate(String isoString) {
     try {
-      final dt = DateTime.parse(isoString);
+      final dt = parseAttendanceDateTime(isoString);
       const thDays = ['จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'];
       const thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
                         'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -158,8 +154,8 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
   String _calcDuration(dynamic checkInRaw, dynamic checkOutRaw) {
     try {
       if (checkInRaw == null || checkOutRaw == null) return '-';
-      final inTime = DateTime.parse(checkInRaw.toString()).toLocal();
-      final outTime = DateTime.parse(checkOutRaw.toString()).toLocal();
+      final inTime = DateTime.parse(checkInRaw.toString());
+      final outTime = DateTime.parse(checkOutRaw.toString());
       final diff = outTime.difference(inTime);
       final h = diff.inHours;
       final m = diff.inMinutes % 60;

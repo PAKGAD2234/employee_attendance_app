@@ -6,8 +6,9 @@ const supabase = createClient(
 )
 
 const LINE_TOKEN = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN')!
+const LINE_GROUP_ID = Deno.env.get('LINE_GROUP_ID')!
 
-async function pushLine(userId: string, message: string) {
+async function pushLine(to: string, message: string) {
   await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: {
@@ -15,18 +16,10 @@ async function pushLine(userId: string, message: string) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      to: userId,
+      to,
       messages: [{ type: 'text', text: message }]
     })
   })
-}
-
-async function getRecipients() {
-  const { data } = await supabase
-    .from('line_recipients')
-    .select('line_user_id')
-    .eq('role', 'admin')  // ✅ เฉพาะ admin เท่านั้น
-  return (data ?? []).filter(r => !r.line_user_id.startsWith('PLACEHOLDER'))
 }
 
 Deno.serve(async () => {
@@ -85,8 +78,6 @@ Deno.serve(async () => {
     return new Response('no schedules', { status: 200 })
   }
 
-  const recipients = await getRecipients()
-
   for (const { emp, shiftStart } of uniqueSchedules) {
     if (!shiftStart || !emp) continue
 
@@ -96,72 +87,15 @@ Deno.serve(async () => {
 
     console.log(`${emp.full_name} shiftStart:${shiftStart} diffFromNow:${diffFromNow}`)
 
-    // ---- เตือนล่วงหน้า 30 นาที ----
+    // ---- เตือนล่วงหน้า 30 นาที (ส่งข้อความธรรมดา ไม่มีปุ่มยืนยัน) ----
     if (diffFromNow === 30 && emp.line_user_id) {
-      const flexMessage = {
-        to: emp.line_user_id,
-        messages: [{
-          type: 'flex',
-          altText: 'เตือนเข้างาน',
-          contents: {
-            type: 'bubble',
-            header: {
-              type: 'box',
-              layout: 'vertical',
-              backgroundColor: '#185FA5',
-              contents: [{
-                type: 'text',
-                text: 'เตือนเข้างาน',
-                color: '#ffffff',
-                weight: 'bold',
-                size: 'lg'
-              }]
-            },
-            body: {
-              type: 'box',
-              layout: 'vertical',
-              spacing: 'sm',
-              contents: [
-                { type: 'text', text: `สวัสดี ${emp.full_name}`, weight: 'bold' },
-                {
-                  type: 'text',
-                  text: `กะงานเริ่ม ${shiftStart} น. (อีก 30 นาที)`,
-                  color: '#555555'
-                }
-              ]
-            },
-            footer: {
-              type: 'box',
-              layout: 'vertical',
-              contents: [{
-                type: 'button',
-                style: 'primary',
-                color: '#1D9E75',
-                action: {
-                  type: 'postback',
-                  label: 'ยืนยันเข้างาน',
-                  data: `confirm_arrival|${emp.id}|${todayStr}`,
-                  displayText: 'ยืนยันเข้างานแล้วครับ'
-                }
-              }]
-            }
-          }
-        }]
-      }
-
-      const res = await fetch('https://api.line.me/v2/bot/message/push', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LINE_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(flexMessage)
-      })
-      const resBody = await res.json()
-      console.log('LINE flex response:', JSON.stringify(resBody))
+      await pushLine(
+        emp.line_user_id,
+        `✅ รับทราบแล้วครับ ${emp.full_name}\nไปทำงานให้สนุกนะครับ! 💪\n\n📲 อย่าลืมเช็คอินด้วยนะครับ\nhttps://timetrack.opmatch.com`
+      )
     }
 
-    // ---- ถึงเวลางานแล้ว ยังไม่เช็คอิน → แจ้ง Admin ----
+    // ---- ถึงเวลางานแล้ว ยังไม่เช็คอิน → แจ้งเข้ากลุ่ม ----
     if (diffFromNow === 0) {
       const { data: attendance } = await supabase
         .from('attendance')
@@ -175,12 +109,11 @@ Deno.serve(async () => {
 
       const confirmed = attendance?.confirmed_arrival === true
       const alertMsg = confirmed
-        ? `⚠️ ${emp.full_name} กดยืนยันว่าจะมาแล้ว แต่ยังไม่เช็คอิน!\n⏰ กะงาน: ${shiftStart} น.\n📞 ${emp.phone ?? 'ไม่มีเบอร์'}`
-        : `🚨 ${emp.full_name} ไม่ได้ยืนยันและไม่เช็คอิน!\n⏰ กะงาน: ${shiftStart} น.\n📞 ${emp.phone ?? 'ไม่มีเบอร์'}\nโทรหาได้เลย!`
-         
-      for (const r of recipients) {
-        await pushLine(r.line_user_id, alertMsg)
-      }
+        ? `📋 ${emp.full_name} ยืนยันว่าจะมาทำงานแล้ว แต่ยังไม่เช็คอิน!\n⏰ กะงาน: ${shiftStart} น.\n📞 ${emp.phone ?? 'ไม่มีเบอร์'}\nโทรหาได้เลย!`
+        : `🚨 ${emp.full_name} ยังไม่เช็คอิน!\n⏰ กะงาน: ${shiftStart} น.\n📞 ${emp.phone ?? 'ไม่มีเบอร์'}\nโทรหาได้เลย!`
+
+      // ✅ ส่งเข้ากลุ่ม LINE กลุ่มเดียว แทนการ loop ส่งหา admin ทีละคน
+      await pushLine(LINE_GROUP_ID, alertMsg)
     }
   }
 

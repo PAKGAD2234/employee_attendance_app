@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/notification_service.dart';
 import '../services/supabase_service.dart';
+import '../utils/time_utils.dart';
 
 // ══════════════════════════════════════════════════════════
 //  CompanyDashboardView
@@ -122,7 +123,7 @@ class _CompanyDashboardViewState extends State<CompanyDashboardView>
       final d = r['work_date']?.toString() ?? '';
       if (d.isEmpty) return false;
       try {
-        final dt = DateTime.parse(d);
+        final dt = parseAttendanceDateTime(d);
         return dt.year == now.year && dt.month == now.month && dt.day == now.day;
       } catch (_) { return false; }
     }).toList();
@@ -133,7 +134,7 @@ class _CompanyDashboardViewState extends State<CompanyDashboardView>
       final d = r['work_date']?.toString() ?? '';
       if (d.isEmpty) return false;
       try {
-        final dt = DateTime.parse(d);
+        final dt = parseAttendanceDateTime(d);
         return dt.year == _selectedDate.year &&
             dt.month == _selectedDate.month &&
             dt.day == _selectedDate.day;
@@ -150,19 +151,11 @@ class _CompanyDashboardViewState extends State<CompanyDashboardView>
   // ════════════════════════════════════════════
 
   String _fmtTime(String? iso) {
-    if (iso == null || iso.isEmpty) return '--:--';
-    try {
-      final dt = DateTime.parse(iso);
-      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    } catch (_) { return '--:--'; }
+    return formatAttendanceTime(iso, fallback: '--:--');
   }
 
   String _fmtDate(String? iso) {
-    if (iso == null || iso.isEmpty) return '-';
-    try {
-      final dt = DateTime.parse(iso);
-      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
-    } catch (_) { return iso; }
+    return formatAttendanceDate(iso, fallback: iso ?? '-');
   }
 
   String _getImageUrl(String? val) {
@@ -177,7 +170,7 @@ class _CompanyDashboardViewState extends State<CompanyDashboardView>
       return _attendance.firstWhere((r) {
         final d = r['work_date']?.toString() ?? '';
         if (d.isEmpty) return false;
-        final dt = DateTime.parse(d);
+        final dt = parseAttendanceDateTime(d);
         return r['employee_id']?.toString() == empId &&
             dt.year == date.year &&
             dt.month == date.month &&

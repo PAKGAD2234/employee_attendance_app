@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart'; // ← kIsWeb อยู่ที่นี่
+import '../utils/time_utils.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // CheckOutUI
 // ─────────────────────────────────────────────────────────────────────────────
@@ -176,7 +177,7 @@ class _CheckOutUIState extends State<CheckOutUI>
 
     setState(() => _isSubmitting = true);
     try {
-      final now = DateTime.now().toLocal();
+      final now = DateTime.now();
       final today = _dateStr(now);
 
       // ── Get GPS (use pre-fetched if available, else re-fetch) ──────────
@@ -217,7 +218,7 @@ class _CheckOutUIState extends State<CheckOutUI>
       final updated = await _supabase
           .from('attendance')
           .update({
-            'checkout_time': now.toIso8601String(),
+            'checkout_time': formatAttendanceStorageDateTime(now),
             'checkout_photo': fileName,
             'checkout_lat': pos.latitude,
             'checkout_lng': pos.longitude,

@@ -42,6 +42,11 @@ dependencies:
   url_launcher: ^6.3.0  # สำหรับโทรออก
   timeago: ^3.6.0  
   universal_io: ^2.2.2
+  universal_html: ^2.1.0
+#  # PDF export
+  pdf: ^3.10.7
+  printing: ^5.11.0
+  share_plus: ^7.2.1
 
 dev_dependencies:
   flutter_test:
@@ -54,3 +59,5 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/fonts/Sarabun-Regular.ttf
+    - assets/fonts/Sarabun-Bold.ttf
