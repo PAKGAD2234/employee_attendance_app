@@ -1,9 +1,10 @@
 import 'package:employee_attendance_app/services/supabase_service.dart';
 import 'package:employee_attendance_app/view/admin_ui.dart';
 import 'package:employee_attendance_app/view/employee_home_ui.dart';
-import 'package:employee_attendance_app/view/home_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -21,6 +22,11 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   bool isLoading = false;
   bool obscurePassword = true;
+  bool rememberMe = true;
+
+  static const _rememberUsernameKey = 'remembered_login_username';
+  static const _rememberPasswordKey = 'remembered_login_password';
+  static const _secureStorage = FlutterSecureStorage();
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -34,6 +40,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     supabaseService.initialize(supabase);
+    _loadRememberedCredentials();
 
     _fadeController = AnimationController(
       vsync: this,
@@ -62,6 +69,46 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     _pulseAnim = Tween<double>(begin: 0.92, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+  }
+
+  Future<void> _loadRememberedCredentials() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final rememberedUsername = preferences.getString(_rememberUsernameKey);
+      final rememberedPassword =
+          await _secureStorage.read(key: _rememberPasswordKey);
+
+      if (!mounted) return;
+      if (usernameController.text.isEmpty &&
+          rememberedUsername != null &&
+          rememberedUsername.isNotEmpty) {
+        usernameController.text = rememberedUsername;
+      }
+      if (passwordController.text.isEmpty &&
+          rememberedPassword != null &&
+          rememberedPassword.isNotEmpty) {
+        passwordController.text = rememberedPassword;
+      }
+    } catch (_) {
+      // บาง WebView อาจไม่รองรับ secure storage จึงปล่อยให้กรอกเองได้
+    }
+  }
+
+  Future<void> _saveRememberedCredentials() async {
+    final preferences = await SharedPreferences.getInstance();
+    if (rememberMe) {
+      await preferences.setString(
+        _rememberUsernameKey,
+        usernameController.text.trim(),
+      );
+      await _secureStorage.write(
+        key: _rememberPasswordKey,
+        value: passwordController.text,
+      );
+    } else {
+      await preferences.remove(_rememberUsernameKey);
+      await _secureStorage.delete(key: _rememberPasswordKey);
+    }
   }
 
   @override
@@ -98,6 +145,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       );
 
       if (employee != null) {
+        await _saveRememberedCredentials();
         final role = employee['role'];
         final employeeId = employee['id'];
 
@@ -175,27 +223,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   Color(0xF0000000),
                 ],
                 stops: [0.0, 0.45, 1.0],
-              ),
-            ),
-          ),
-
-          Positioned(
-            top: 16,
-            left: 16,
-            child: SafeArea(
-              child: IconButton(
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HomepageUI()),
-                    (route) => false,
-                  );
-                },
-                icon: const Icon(
-                  Icons.arrow_back_ios_new,
-                  color: Colors.white,
-                ),
-                tooltip: 'กลับไปหน้าแรก',
               ),
             ),
           ),
@@ -372,6 +399,33 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
                               const SizedBox(height: 28),
 
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: CheckboxListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
+                                  title: const Text(
+                                    'จดจำฉันในเครื่องนี้',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  value: rememberMe,
+                                  activeColor: const Color(0xFF29B6F6),
+                                  checkColor: Colors.white,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      rememberMe = value ?? false;
+                                    });
+                                  },
+                                ),
+                              ),
+
+                              const SizedBox(height: 8),
+
                               // Login button
                               SizedBox(
                                 width: double.infinity,
@@ -420,6 +474,22 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
+              ),
+            ),
+          ),
+
+          // Keep the back button above the full-screen scrollable content.
+          Positioned(
+            top: 16,
+            left: 16,
+            child: SafeArea(
+              child: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: Colors.white,
+                ),
+                tooltip: 'กลับไปหน้าแรก',
               ),
             ),
           ),
