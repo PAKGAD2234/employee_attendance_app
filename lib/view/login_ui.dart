@@ -1,6 +1,8 @@
 import 'package:employee_attendance_app/services/supabase_service.dart';
+import 'package:employee_attendance_app/services/app_supabase.dart';
 import 'package:employee_attendance_app/view/admin_ui.dart';
 import 'package:employee_attendance_app/view/employee_home_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,6 +28,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   static const _rememberUsernameKey = 'remembered_login_username';
   static const _rememberPasswordKey = 'remembered_login_password';
+  static const _rememberWebPasswordKey = 'remembered_login_password_web';
   static const _secureStorage = FlutterSecureStorage();
 
   late AnimationController _fadeController;
@@ -75,8 +78,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     try {
       final preferences = await SharedPreferences.getInstance();
       final rememberedUsername = preferences.getString(_rememberUsernameKey);
-      final rememberedPassword =
-          await _secureStorage.read(key: _rememberPasswordKey);
+        final rememberedPassword = kIsWeb
+          ? preferences.getString(_rememberWebPasswordKey)
+          : await _secureStorage.read(key: _rememberPasswordKey);
 
       if (!mounted) return;
       if (usernameController.text.isEmpty &&
@@ -95,19 +99,33 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Future<void> _saveRememberedCredentials() async {
-    final preferences = await SharedPreferences.getInstance();
-    if (rememberMe) {
-      await preferences.setString(
-        _rememberUsernameKey,
-        usernameController.text.trim(),
-      );
-      await _secureStorage.write(
-        key: _rememberPasswordKey,
-        value: passwordController.text,
-      );
-    } else {
-      await preferences.remove(_rememberUsernameKey);
-      await _secureStorage.delete(key: _rememberPasswordKey);
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      if (rememberMe) {
+        await preferences.setString(
+          _rememberUsernameKey,
+          usernameController.text.trim(),
+        );
+        if (kIsWeb) {
+          await preferences.setString(
+            _rememberWebPasswordKey,
+            passwordController.text,
+          );
+        } else {
+          await _secureStorage.write(
+            key: _rememberPasswordKey,
+            value: passwordController.text,
+          );
+        }
+      } else {
+        await preferences.remove(_rememberUsernameKey);
+        await preferences.remove(_rememberWebPasswordKey);
+        if (!kIsWeb) {
+          await _secureStorage.delete(key: _rememberPasswordKey);
+        }
+      }
+    } catch (_) {
+      // Storage failure must not prevent a valid login.
     }
   }
 
@@ -139,9 +157,56 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     setState(() => isLoading = true);
 
     try {
+      final username = usernameController.text.trim();
+      final password = passwordController.text.trim();
+
+      if (username.toLowerCase().startsWith('demo') &&
+          password.toLowerCase() == 'demo') {
+        final demoEmployee = await demoSupabase
+            .from('employees')
+            .select()
+            .eq('username', username.toLowerCase())
+            .eq('password', 'demo')
+            .eq('status', 'active')
+            .maybeSingle();
+
+        if (demoEmployee != null && mounted) {
+          final role = demoEmployee['role'];
+          if (role == 'admin') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AdminView(
+                  isDemo: true,
+                  client: demoSupabase,
+                ),
+              ),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EmployeeHomeView(
+                  employeeId: demoEmployee['id'],
+                  employeeName: demoEmployee['full_name'] ?? '',
+                  employeePhone: demoEmployee['phone'] ?? '',
+                  client: demoSupabase,
+                ),
+              ),
+            );
+          }
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ไม่พบบัญชี Demo ในฐานข้อมูล Demo')),
+          );
+        }
+        if (mounted) setState(() => isLoading = false);
+        return;
+      }
+
       final employee = await supabaseService.verifyLogin(
-        usernameController.text.trim(),
-        passwordController.text.trim(),
+        username,
+        password,
       );
 
       if (employee != null) {
@@ -153,7 +218,11 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => const AdminView()),
+              MaterialPageRoute(
+                builder: (_) => AdminView(
+                  client: supabase,
+                ),
+              ),
             );
           }
         } else {

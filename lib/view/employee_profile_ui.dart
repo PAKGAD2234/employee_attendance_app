@@ -249,8 +249,13 @@ void showThemedSnackBar(
 
 class EmployeeProfileUI extends StatefulWidget {
   final String employeeId;
+  final SupabaseClient? client;
 
-  const EmployeeProfileUI({super.key, required this.employeeId});
+  const EmployeeProfileUI({
+    super.key,
+    required this.employeeId,
+    this.client,
+  });
 
   @override
   State<EmployeeProfileUI> createState() => _EmployeeProfileUIState();
@@ -258,7 +263,7 @@ class EmployeeProfileUI extends StatefulWidget {
 
 class _EmployeeProfileUIState extends State<EmployeeProfileUI>
     with SingleTickerProviderStateMixin {
-  final supabase = Supabase.instance.client;
+  late final SupabaseClient supabase;
   final supabaseService = SupabaseService();
 
   bool isLoading = false;
@@ -283,6 +288,7 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
   @override
   void initState() {
     super.initState();
+    supabase = widget.client ?? Supabase.instance.client;
     supabaseService.initialize(supabase);
 
     _fadeCtrl = AnimationController(

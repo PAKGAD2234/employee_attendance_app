@@ -12,14 +12,17 @@ import '../utils/time_utils.dart';
 import 'export_report_ui.dart';
 
 class AdminView extends StatefulWidget {
-  const AdminView({super.key});
+  final bool isDemo;
+  final SupabaseClient? client;
+
+  const AdminView({super.key, this.isDemo = false, this.client});
 
   @override
   State<AdminView> createState() => _AdminViewState();
 }
 
 class _AdminViewState extends State<AdminView> {
-  final supabase = Supabase.instance.client;
+  late final SupabaseClient supabase;
   final supabaseService = SupabaseService();
 
   List employees = [];
@@ -109,6 +112,7 @@ class _AdminViewState extends State<AdminView> {
   @override
   void initState() {
     super.initState();
+    supabase = widget.client ?? Supabase.instance.client;
     print('🚀 AdminView initState called');
     NotificationService.init();
     supabaseService.initialize(supabase);
@@ -368,6 +372,7 @@ class _AdminViewState extends State<AdminView> {
   }
 
   Future<void> _markAllAsRead() async {
+    if (widget.isDemo) return;
     try {
       await supabase
           .from('notifications')
@@ -1251,8 +1256,10 @@ Widget _editField(
                 ],
               ),
       bottomNavigationBar: _buildBottomNav(),
-      floatingActionButton:
-          (_currentNavIndex == 0 || _currentNavIndex == 1)
+        floatingActionButton:
+          widget.isDemo
+            ? null
+            : (_currentNavIndex == 0 || _currentNavIndex == 1)
               ? FloatingActionButton(
                 onPressed: () {
                   Navigator.push(
@@ -1300,16 +1307,26 @@ Widget _editField(
   }
 
    Widget _buildScheduleTab() {
-  final menuItems = [
+  void openScheduleFeature(VoidCallback action) {
+    if (widget.isDemo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('โหมด Demo เปิดดูเมนูนี้ไม่ได้ในขณะนี้')),
+      );
+      return;
+    }
+    action();
+  }
+
+  final menuItems = <Map<String, dynamic>>[
     {
       'title': 'Shift Templates',
       'subtitle': 'จัดการกะงาน เวลาเข้า-ออก',
       'icon': Icons.schedule_rounded,
       'color': blue600,
       'bg': blue50,
-      'onTap': () => Navigator.push(context,
+        'onTap': () => openScheduleFeature(() => Navigator.push(context,
           MaterialPageRoute(builder: (_) => ShiftManagementUI()))
-          .then((_) => loadData()),
+          .then((_) => loadData())),
     },
     {
       'title': 'ตารางประจำ (Weekly Pattern)',
@@ -1317,7 +1334,7 @@ Widget _editField(
       'icon': Icons.calendar_view_week_rounded,
       'color': teal400,
       'bg': teal50,
-      'onTap': () => _pickEmployeeForSchedule(),
+      'onTap': () => openScheduleFeature(_pickEmployeeForSchedule),
     },
     {
       'title': 'ปฏิทินตารางงาน',
@@ -1325,9 +1342,9 @@ Widget _editField(
       'icon': Icons.calendar_month_rounded,
       'color': amber400,
       'bg': amber50,
-      'onTap': () => Navigator.push(context,
+        'onTap': () => openScheduleFeature(() => Navigator.push(context,
           MaterialPageRoute(builder: (_) => ScheduleCalendarUI()))
-          .then((_) => loadData()),
+          .then((_) => loadData())),
     },
     {
   'title': 'Export Report',
@@ -1335,8 +1352,8 @@ Widget _editField(
   'icon': Icons.summarize_rounded,
   'color': const Color(0xFF7F77DD),
   'bg': const Color(0xFFEDEBFB),
-  'onTap': () => Navigator.push(context,
-      MaterialPageRoute(builder: (_) => const ExportReportUI())),
+    'onTap': () => openScheduleFeature(() => Navigator.push(context,
+      MaterialPageRoute(builder: (_) => const ExportReportUI()))),
 },
   ];
 

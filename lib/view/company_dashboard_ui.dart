@@ -12,8 +12,13 @@ import '../utils/time_utils.dart';
 // ══════════════════════════════════════════════════════════
 class CompanyDashboardView extends StatefulWidget {
   final Map<String, dynamic> workSite; // { id, name, address, ... }
+  final SupabaseClient? client;
 
-  const CompanyDashboardView({super.key, required this.workSite});
+  const CompanyDashboardView({
+    super.key,
+    required this.workSite,
+    this.client,
+  });
 
   @override
   State<CompanyDashboardView> createState() => _CompanyDashboardViewState();
@@ -21,7 +26,7 @@ class CompanyDashboardView extends StatefulWidget {
 
 class _CompanyDashboardViewState extends State<CompanyDashboardView>
     with SingleTickerProviderStateMixin {
-  final supabase = Supabase.instance.client;
+  late final SupabaseClient supabase;
   final supabaseService = SupabaseService();
 
   List<Map<String, dynamic>> _employees = [];
@@ -57,6 +62,7 @@ class _CompanyDashboardViewState extends State<CompanyDashboardView>
   @override
   void initState() {
     super.initState();
+    supabase = widget.client ?? Supabase.instance.client;
     NotificationService.init();
     supabaseService.initialize(supabase);
     _loadData();

@@ -2,6 +2,7 @@ import 'package:employee_attendance_app/view/company_dashboard_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
+import '../services/app_supabase.dart';
 
 class CompanyLoginPage extends StatefulWidget {
   final Map<String, dynamic> workSite;
@@ -75,18 +76,32 @@ class _CompanyLoginPageState extends State<CompanyLoginPage>
 
     try {
       // ค้นหา work_site ที่มี PIN ตรงกัน
-      final res = await supabase
+        final select = 'id, name, address, gps_lat, gps_lng, gps_radius, pin';
+        var res = await supabase
           .from('work_sites')
-          .select('id, name, address, pin')
+          .select(select)
           .eq('pin', pin)
           .maybeSingle();
+        SupabaseClient dashboardClient = supabase;
+
+        if (res == null) {
+        res = await demoSupabase
+          .from('work_sites')
+          .select(select)
+          .eq('pin', pin)
+          .maybeSingle();
+        if (res != null) dashboardClient = demoSupabase;
+        }
 
       if (res != null) {
         if (mounted) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => CompanyDashboardView(workSite: res),
+              builder: (_) => CompanyDashboardView(
+                workSite: res!,
+                client: dashboardClient,
+              ),
             ),
           );
         }

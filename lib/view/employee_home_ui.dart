@@ -12,11 +12,13 @@ class EmployeeHomeView extends StatefulWidget {
   final String employeeId;
   final String employeeName;
   final String employeePhone;
+  final SupabaseClient? client;
   const EmployeeHomeView({
     super.key,
     required this.employeeId,
     required this.employeeName,
     required this.employeePhone,
+    this.client,
   });
 
   @override
@@ -25,7 +27,7 @@ class EmployeeHomeView extends StatefulWidget {
 
 class _EmployeeHomeViewState extends State<EmployeeHomeView>
     with TickerProviderStateMixin {
-  final supabase = Supabase.instance.client;
+  late final SupabaseClient supabase;
   final supabaseService = SupabaseService();
 
   String fullName = '';
@@ -58,6 +60,7 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView>
   @override
   void initState() {
     super.initState();
+    supabase = widget.client ?? Supabase.instance.client;
     supabaseService.initialize(supabase);
     loadUser();
     _loadCalendar();
@@ -1134,7 +1137,9 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView>
                               context,
                               MaterialPageRoute(
                                 builder: (_) => EmployeeProfileUI(
-                                    employeeId: widget.employeeId),
+                                  employeeId: widget.employeeId,
+                                  client: widget.client,
+                                ),
                               ),
                             ).then((_) => loadUser()),
                           ),
