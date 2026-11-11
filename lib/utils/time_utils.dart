@@ -6,21 +6,12 @@ DateTime toBangkokDateTime(DateTime value) {
   return value.toUtc().add(const Duration(hours: 7));
 }
 
-/// แปลงเวลาไทยให้เป็นค่าเพื่อเก็บลง DB แบบ UTC ที่ถูกลบ 7 ชั่วโมง
-/// ตัวอย่าง: เวลาไทย 09:00 จะถูกเก็บเป็น 02:00Z
+/// เก็บเวลาไทยตามค่าบนหน้าปัดโดยไม่แปลงเป็น UTC
+/// Google Sheets ไม่มี timezone ต่อเซลล์ จึงเก็บเป็นเวลาไทยแบบไม่มี timezone marker
 String formatAttendanceStorageDateTime(DateTime value) {
-  final storageUtc = DateTime.utc(
-    value.year,
-    value.month,
-    value.day,
-    value.hour,
-    value.minute,
-    value.second,
-    value.millisecond,
-  ).subtract(const Duration(hours: 7));
-  final milli = storageUtc.millisecond.toString().padLeft(3, '0');
-  return '${storageUtc.year.toString().padLeft(4, '0')}-${_pad(storageUtc.month)}-${_pad(storageUtc.day)}'
-      'T${_pad(storageUtc.hour)}:${_pad(storageUtc.minute)}:${_pad(storageUtc.second)}.${milli}Z';
+  final milli = value.millisecond.toString().padLeft(3, '0');
+  return '${value.year.toString().padLeft(4, '0')}-${_pad(value.month)}-${_pad(value.day)}'
+      'T${_pad(value.hour)}:${_pad(value.minute)}:${_pad(value.second)}.${milli}';
 }
 
 /// อ่านค่าเวลาที่ดึงมาจาก DB (attendance.checkin_time / checkout_time)
@@ -33,7 +24,7 @@ DateTime parseAttendanceDateTime(String isoString) {
   final hasOffset = RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(isoString);
 
   if (hasZ || hasOffset) {
-    // ค่านี้มี timezone ติดมาชัดเจน (เช่นเป็น UTC จาก Postgres) -> แปลงกลับเป็นเวลาไทยแบบตายตัว
+    // รองรับข้อมูลเดิมที่บันทึกเป็น UTC โดยลบ 7 ชั่วโมง
     final utcInstant = DateTime.parse(isoString).toUtc();
     return utcInstant.add(const Duration(hours: 7));
   }

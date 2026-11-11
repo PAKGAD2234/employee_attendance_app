@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
 
 class ShiftManagementUI extends StatefulWidget {
   const ShiftManagementUI({super.key});
@@ -9,7 +9,7 @@ class ShiftManagementUI extends StatefulWidget {
 }
 
 class _ShiftManagementUIState extends State<ShiftManagementUI> {
-  final supabase = Supabase.instance.client;
+  final supabase = SheetsClient.instance;
 
   List _shifts = [];
   List _workSites = [];

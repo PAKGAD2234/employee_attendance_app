@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
+import 'package:employee_attendance_app/services/drive_image.dart';
 
 class ScheduleCalendarUI extends StatefulWidget {
   final String? initialSiteId;
@@ -16,7 +17,7 @@ class ScheduleCalendarUI extends StatefulWidget {
 
 class _ScheduleCalendarUIState extends State<ScheduleCalendarUI>
     with SingleTickerProviderStateMixin {
-  final supabase = Supabase.instance.client;
+  final supabase = SheetsClient.instance;
 
   List _employees = [];
   List _shifts = [];
@@ -1423,18 +1424,12 @@ class _ScheduleCalendarUIState extends State<ScheduleCalendarUI>
               height: 40,
               color: isOff ? gray50 : schedColor.withOpacity(0.12),
               child: profileUrl.isNotEmpty
-                  ? Image.network(
-                      profileUrl,
+                  ? DriveImage(
+                      url: profileUrl,
                       width: 40,
                       height: 40,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Center(
-                        child: Text(initials,
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: isOff ? gray400 : schedColor)),
-                      ),
+                      thumb: true,
                     )
                   : Center(
                       child: Text(initials,

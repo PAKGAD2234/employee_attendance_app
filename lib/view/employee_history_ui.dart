@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
+import 'package:employee_attendance_app/services/drive_image.dart';
 import '../services/supabase_service.dart';
 import '../utils/time_utils.dart';
 
@@ -13,7 +14,7 @@ class EmployeeHistoryUI extends StatefulWidget {
 
 class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
     with SingleTickerProviderStateMixin {
-  final supabase = Supabase.instance.client;
+  final supabase = SheetsClient.instance;
   final supabaseService = SupabaseService();
 
   List attendance = [];
@@ -42,17 +43,30 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
 
   String _selectedDateLabel() {
     if (selectedDate == null) return 'เลือกวันที่';
-    const thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const thMonths = [
+      'ม.ค.',
+      'ก.พ.',
+      'มี.ค.',
+      'เม.ย.',
+      'พ.ค.',
+      'มิ.ย.',
+      'ก.ค.',
+      'ส.ค.',
+      'ก.ย.',
+      'ต.ค.',
+      'พ.ย.',
+      'ธ.ค.',
+    ];
     return 'วันที่ ${selectedDate!.day} ${thMonths[selectedDate!.month - 1]} ${selectedDate!.year + 543}';
   }
 
   String _getSiteName(Map record) {
-  try {
-    return record['employees']?['work_sites']?['name'] ?? '';
-  } catch (_) {
-    return '';
+    try {
+      return (record['work_sites']?['name'] ?? '') as String;
+    } catch (_) {
+      return '';
+    }
   }
-}
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnim;
@@ -79,14 +93,17 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
 
   Future<void> loadData() async {
     try {
-      final data =
-          await supabaseService.getEmployeeAttendance(widget.employeeId);
+      final data = await supabaseService.getEmployeeAttendance(
+        widget.employeeId,
+      );
+      if (!mounted) return;
       setState(() {
         attendance = data;
         isLoading = false;
       });
       _fadeController.forward(from: 0);
     } catch (e) {
+      if (!mounted) return;
       setState(() => isLoading = false);
     }
   }
@@ -104,9 +121,29 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
   String _formatDate(String isoString) {
     try {
       final dt = parseAttendanceDateTime(isoString);
-      const thDays = ['จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'];
-      const thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
-                        'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+      const thDays = [
+        'จันทร์',
+        'อังคาร',
+        'พุธ',
+        'พฤหัส',
+        'ศุกร์',
+        'เสาร์',
+        'อาทิตย์',
+      ];
+      const thMonths = [
+        'ม.ค.',
+        'ก.พ.',
+        'มี.ค.',
+        'เม.ย.',
+        'พ.ค.',
+        'มิ.ย.',
+        'ก.ค.',
+        'ส.ค.',
+        'ก.ย.',
+        'ต.ค.',
+        'พ.ย.',
+        'ธ.ค.',
+      ];
       return 'วัน${thDays[dt.weekday - 1]}ที่ ${dt.day} ${thMonths[dt.month - 1]} ${dt.year + 543}';
     } catch (_) {
       return '-';
@@ -169,40 +206,49 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(label,
-                style: const TextStyle(
+      builder:
+          (dialogContext) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    fontSize: 16)),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(url, fit: BoxFit.cover),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF29B6F6).withOpacity(0.20),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: const Color(0xFF29B6F6).withOpacity(0.50)),
+                    fontSize: 16,
+                  ),
                 ),
-                child: const Text('ปิด',
-                    style: TextStyle(color: Color(0xFF29B6F6))),
-              ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: DriveImage(url: url, fit: BoxFit.cover, thumb: false),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF29B6F6).withOpacity(0.20),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF29B6F6).withOpacity(0.50),
+                      ),
+                    ),
+                    child: const Text(
+                      'ปิด',
+                      style: TextStyle(color: Color(0xFF29B6F6)),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -215,11 +261,13 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12),
-          border:
-              Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+          border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
         ),
-        child: Icon(Icons.image_not_supported_outlined,
-            color: Colors.white.withOpacity(0.25), size: 22),
+        child: Icon(
+          Icons.image_not_supported_outlined,
+          color: Colors.white.withOpacity(0.25),
+          size: 22,
+        ),
       );
     }
     return GestureDetector(
@@ -230,19 +278,26 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: const Color(0xFF29B6F6).withOpacity(0.45), width: 1.5),
+            color: const Color(0xFF29B6F6).withOpacity(0.45),
+            width: 1.5,
+          ),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF29B6F6).withOpacity(0.20),
               blurRadius: 8,
-            )
+            ),
           ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(11),
-          child: Image.network(url, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Icon(Icons.broken_image_outlined,
-                  color: Colors.white.withOpacity(0.30))),
+          child: Container(
+            color: Colors.white.withOpacity(0.06),
+            child: const Icon(
+              Icons.photo_outlined,
+              color: Color(0xFF29B6F6),
+              size: 24,
+            ),
+          ),
         ),
       ),
     );
@@ -261,11 +316,14 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
           children: [
             Icon(icon, color: color, size: 14),
             const SizedBox(width: 4),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white.withOpacity(0.45),
-                    letterSpacing: 0.3)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.white.withOpacity(0.45),
+                letterSpacing: 0.3,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),
@@ -283,36 +341,40 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
   }
 
   Widget _buildCard(Map record, int index) {
-    final checkIn = record['checkin_time'] != null
-        ? _formatTime(record['checkin_time'])
-        : '-';
-    final checkOut = record['checkout_time'] != null
-        ? _formatTime(record['checkout_time'])
-        : '-';
+    final checkIn =
+        record['checkin_time'] != null
+            ? _formatTime(record['checkin_time'])
+            : '-';
+    final checkOut =
+        record['checkout_time'] != null
+            ? _formatTime(record['checkout_time'])
+            : '-';
     final date = _formatDate(record['work_date'].toString());
-    final duration =
-        _calcDuration(record['checkin_time'], record['checkout_time']);
+    final duration = _calcDuration(
+      record['checkin_time'],
+      record['checkout_time'],
+    );
     final hasCheckOut = record['checkout_time'] != null;
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: Duration(milliseconds: 400 + index * 60),
       curve: Curves.easeOutCubic,
-      builder: (context, val, child) => Opacity(
-        opacity: val,
-        child: Transform.translate(
-          offset: Offset(0, 20 * (1 - val)),
-          child: child,
-        ),
-      ),
+      builder:
+          (context, val, child) => Opacity(
+            opacity: val,
+            child: Transform.translate(
+              offset: Offset(0, 20 * (1 - val)),
+              child: child,
+            ),
+          ),
       child: Container(
         margin: const EdgeInsets.fromLTRB(20, 0, 20, 14),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.07),
           borderRadius: BorderRadius.circular(22),
-          border:
-              Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+          border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,69 +383,97 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
             Row(
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF29B6F6).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: const Color(0xFF29B6F6).withOpacity(0.35),
-                        width: 1),
+                      color: const Color(0xFF29B6F6).withOpacity(0.35),
+                      width: 1,
+                    ),
                   ),
-                  child: Text(date,
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF29B6F6),
-                          fontWeight: FontWeight.w600)),
+                  child: Text(
+                    date,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF29B6F6),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                 Builder(builder: (_) {
-      final siteName = (record['employees']?['work_sites']?['name'] ?? '') as String;
-      if (siteName.isEmpty) return const SizedBox.shrink();
-      return Row(
-        children: [
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.teal.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.teal.withOpacity(0.30), width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.location_on, size: 11, color: Colors.teal[300]),
-                const SizedBox(width: 4),
-                Text(siteName,
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.teal[300],
-                        fontWeight: FontWeight.w500)),
-              ],
-            ),
-          ),
-        ],
-      );
-    }),
+                Builder(
+                  builder: (_) {
+                    final siteName = _getSiteName(record);
+                    if (siteName.isEmpty) return const SizedBox.shrink();
+                    return Row(
+                      children: [
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.teal.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.teal.withOpacity(0.30),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                size: 11,
+                                color: Colors.teal[300],
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                siteName,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.teal[300],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
                 const Spacer(),
                 if (duration != '-')
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.06),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.timer_outlined,
-                            size: 13,
-                            color: Colors.white.withOpacity(0.45)),
+                        Icon(
+                          Icons.timer_outlined,
+                          size: 13,
+                          color: Colors.white.withOpacity(0.45),
+                        ),
                         const SizedBox(width: 4),
-                        Text(duration,
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white.withOpacity(0.55))),
+                        Text(
+                          duration,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.55),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -414,9 +504,10 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                     icon: Icons.logout_rounded,
                     label: 'ออกงาน',
                     time: checkOut,
-                    color: hasCheckOut
-                        ? const Color(0xFF26C6DA)
-                        : Colors.white.withOpacity(0.25),
+                    color:
+                        hasCheckOut
+                            ? const Color(0xFF26C6DA)
+                            : Colors.white.withOpacity(0.25),
                   ),
                 ),
               ],
@@ -430,11 +521,14 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Text('รูปภาพ',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.40),
-                          letterSpacing: 0.3)),
+                  Text(
+                    'รูปภาพ',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.40),
+                      letterSpacing: 0.3,
+                    ),
+                  ),
                   const SizedBox(width: 12),
                   _photoThumb(record['checkin_photo'], 'ภาพเข้างาน'),
                   const SizedBox(width: 10),
@@ -481,8 +575,9 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: const Color(0xFF29B6F6).withOpacity(0.12),
-                    width: 1.5),
+                  color: const Color(0xFF29B6F6).withOpacity(0.12),
+                  width: 1.5,
+                ),
               ),
             ),
           ),
@@ -496,8 +591,11 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                            color: Colors.white, size: 20),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                       const Text(
@@ -513,13 +611,15 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                       if (!isLoading && _filteredAttendance.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF29B6F6).withOpacity(0.15),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                                color:
-                                    const Color(0xFF29B6F6).withOpacity(0.35)),
+                              color: const Color(0xFF29B6F6).withOpacity(0.35),
+                            ),
                           ),
                           child: Text(
                             '${_filteredAttendance.length} รายการ',
@@ -545,26 +645,33 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                           onTap: _pickDate,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.08),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
-                                  color: Colors.white.withOpacity(0.12),
-                                  width: 1),
+                                color: Colors.white.withOpacity(0.12),
+                                width: 1,
+                              ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.calendar_month,
-                                    color: Color(0xFF29B6F6), size: 18),
+                                const Icon(
+                                  Icons.calendar_month,
+                                  color: Color(0xFF29B6F6),
+                                  size: 18,
+                                ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
                                     _selectedDateLabel(),
                                     style: TextStyle(
-                                      color: selectedDate == null
-                                          ? Colors.white.withOpacity(0.55)
-                                          : Colors.white,
+                                      color:
+                                          selectedDate == null
+                                              ? Colors.white.withOpacity(0.55)
+                                              : Colors.white,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -586,8 +693,11 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
                               shape: BoxShape.circle,
                               color: Colors.white.withOpacity(0.08),
                             ),
-                            child: const Icon(Icons.close,
-                                size: 18, color: Colors.white),
+                            child: const Icon(
+                              Icons.close,
+                              size: 18,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
@@ -598,60 +708,66 @@ class _EmployeeHistoryUIState extends State<EmployeeHistoryUI>
 
                 // ── Body ────────────────────────────────────────
                 Expanded(
-                  child: isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                          color: Color(0xFF29B6F6),
-                          strokeWidth: 2.5,
-                        ))
-                      : _filteredAttendance.isEmpty
+                  child:
+                      isLoading
+                          ? const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF29B6F6),
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                          : _filteredAttendance.isEmpty
                           ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.history_toggle_off_rounded,
-                                      size: 64,
-                                      color: Colors.white.withOpacity(0.20)),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    selectedDate == null
-                                        ? 'ยังไม่มีข้อมูลการลงเวลา'
-                                        : 'ไม่มีบันทึกในวันที่เลือก',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        color:
-                                            Colors.white.withOpacity(0.40)),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  if (selectedDate != null) ...[
-                                    const SizedBox(height: 12),
-                                    TextButton(
-                                      onPressed: _pickDate,
-                                      child: const Text('เลือกวันที่ใหม่'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: const Color(0xFF29B6F6),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            )
-                          : FadeTransition(
-                              opacity: _fadeAnim,
-                              child: RefreshIndicator(
-                                onRefresh: loadData,
-                                color: const Color(0xFF29B6F6),
-                                backgroundColor:
-                                    const Color(0xFF0D1B2A),
-                                child: ListView.builder(
-                                  padding: const EdgeInsets.only(
-                                      top: 4, bottom: 32),
-                                  itemCount: _filteredAttendance.length,
-                                  itemBuilder: (_, i) =>
-                                      _buildCard(_filteredAttendance[i], i),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.history_toggle_off_rounded,
+                                  size: 64,
+                                  color: Colors.white.withOpacity(0.20),
                                 ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  selectedDate == null
+                                      ? 'ยังไม่มีข้อมูลการลงเวลา'
+                                      : 'ไม่มีบันทึกในวันที่เลือก',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white.withOpacity(0.40),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                if (selectedDate != null) ...[
+                                  const SizedBox(height: 12),
+                                  TextButton(
+                                    onPressed: _pickDate,
+                                    child: const Text('เลือกวันที่ใหม่'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: const Color(0xFF29B6F6),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          )
+                          : FadeTransition(
+                            opacity: _fadeAnim,
+                            child: RefreshIndicator(
+                              onRefresh: loadData,
+                              color: const Color(0xFF29B6F6),
+                              backgroundColor: const Color(0xFF0D1B2A),
+                              child: ListView.builder(
+                                padding: const EdgeInsets.only(
+                                  top: 4,
+                                  bottom: 32,
+                                ),
+                                itemCount: _filteredAttendance.length,
+                                itemBuilder:
+                                    (_, i) =>
+                                        _buildCard(_filteredAttendance[i], i),
                               ),
                             ),
+                          ),
                 ),
               ],
             ),

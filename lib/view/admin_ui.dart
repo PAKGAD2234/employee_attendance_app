@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:employee_attendance_app/view/login_ui.dart';
 import 'package:employee_attendance_app/view/schedule_calendar_ui.dart';
 import 'package:employee_attendance_app/view/weekly_schedule_ui.dart';
 import 'package:employee_attendance_app/view/shift_management_ui.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
+import 'package:employee_attendance_app/services/drive_image.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/supabase_service.dart';
 import 'add_employee_ui.dart';
@@ -13,7 +16,7 @@ import 'export_report_ui.dart';
 
 class AdminView extends StatefulWidget {
   final bool isDemo;
-  final SupabaseClient? client;
+  final SheetsClient? client;
 
   const AdminView({super.key, this.isDemo = false, this.client});
 
@@ -22,7 +25,7 @@ class AdminView extends StatefulWidget {
 }
 
 class _AdminViewState extends State<AdminView> {
-  late final SupabaseClient supabase;
+  late final SheetsClient supabase;
   final supabaseService = SupabaseService();
 
   List employees = [];
@@ -37,6 +40,8 @@ class _AdminViewState extends State<AdminView> {
   List _leaveData = []; // เพิ่มใน _AdminViewState
   List _weeklySchedules = [];   // ← เพิ่ม
   List _todayOverrides = [];    // ← เพิ่ม 
+  Timer? _notificationTimer;
+  bool _isNotificationRefreshInProgress = false;
   bool _shouldWorkToday(String empId) {
   final now = DateTime.now();
   final dayOfWeek = now.weekday % 7;
@@ -112,7 +117,7 @@ class _AdminViewState extends State<AdminView> {
   @override
   void initState() {
     super.initState();
-    supabase = widget.client ?? Supabase.instance.client;
+    supabase = widget.client ?? SheetsClient.instance;
     print('🚀 AdminView initState called');
     NotificationService.init();
     supabaseService.initialize(supabase);
@@ -121,14 +126,14 @@ class _AdminViewState extends State<AdminView> {
     _loadDefaultSchedule();
     _loadGpsZone();
     _fetchNotifications();
-    _subscribeNotifications();
+    _startNotificationPolling();
     _loadWorkSites();
     _loadScheduleData();
   }
 
   @override
   void dispose() {
-    _notifChannel?.unsubscribe();
+    _notificationTimer?.cancel();
     _siteNameController.dispose();
     _siteLatController.dispose();
     _siteLngController.dispose();
@@ -136,23 +141,16 @@ class _AdminViewState extends State<AdminView> {
     super.dispose();
   }
 
-  RealtimeChannel? _notifChannel;
-
-  void _subscribeNotifications() {
-    _notifChannel?.unsubscribe();
-    _notifChannel =
-        supabase
-            .channel('notifications')
-            .onPostgresChanges(
-              event: PostgresChangeEvent.insert,
-              schema: 'public',
-              table: 'notifications',
-              callback: (payload) {
-                loadData();
-                _fetchNotifications();
-              },
-            )
-            .subscribe();
+  void _startNotificationPolling() {
+    _notificationTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      if (!mounted || _isNotificationRefreshInProgress) return;
+      _isNotificationRefreshInProgress = true;
+      try {
+        await Future.wait([loadData(), _fetchNotifications()]);
+      } finally {
+        _isNotificationRefreshInProgress = false;
+      }
+    });
   }
 
   Future<void> _loadLeaveData() async {
@@ -2164,19 +2162,13 @@ Widget _editField(
               borderRadius: BorderRadius.circular(12),
               child:
                   profileUrl.isNotEmpty
-                      ? Image.network(
-                        profileUrl,
-                        width: 44,
-                        height: 44,
-                        fit: BoxFit.cover,
-                        errorBuilder:
-                            (_, __, ___) => _empAvatarFallback(initials),
-                        loadingBuilder:
-                            (_, child, progress) =>
-                                progress == null
-                                    ? child
-                                    : _empAvatarFallback(initials),
-                      )
+                      ? DriveImage(
+                          url: profileUrl,
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.cover,
+                          thumb: true,
+                        )
                       : _empAvatarFallback(initials),
             ),
             const SizedBox(width: 12),
@@ -2578,33 +2570,12 @@ Column(
             onTap: () => _showImageDialog(url, label),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                url,
+              child: DriveImage(
+                url: url,
                 height: 100,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                loadingBuilder:
-                    (_, child, progress) =>
-                        progress == null
-                            ? child
-                            : Container(
-                              height: 100,
-                              color: gray50,
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  color: blue400,
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            ),
-                errorBuilder:
-                    (_, __, ___) => Container(
-                      height: 100,
-                      color: gray50,
-                      child: const Center(
-                        child: Icon(Icons.image_not_supported, color: gray400),
-                      ),
-                    ),
+                thumb: true,
               ),
             ),
           ),
@@ -2915,14 +2886,13 @@ Column(
                             borderRadius: BorderRadius.circular(10),
                             child:
                                 profileUrl.isNotEmpty
-                                    ? Image.network(
-                                      profileUrl,
-                                      width: 36,
-                                      height: 36,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (_, __, ___) => _miniAvatar(initials),
-                                    )
+                                    ? DriveImage(
+                                        url: profileUrl,
+                                        width: 36,
+                                        height: 36,
+                                        fit: BoxFit.cover,
+                                        thumb: true,
+                                      )
                                     : _miniAvatar(initials),
                           ),
                           const SizedBox(height: 3),
@@ -3215,14 +3185,10 @@ Column(
                   borderRadius: const BorderRadius.vertical(
                     bottom: Radius.circular(16),
                   ),
-                  child: Image.network(
-                    url,
+                  child: DriveImage(
+                    url: url,
                     fit: BoxFit.contain,
-                    errorBuilder:
-                        (_, __, ___) => const Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Icon(Icons.image_not_supported, size: 48),
-                        ),
+                    thumb: false,
                   ),
                 ),
               ],
@@ -3879,14 +3845,13 @@ Column(
                   borderRadius: BorderRadius.circular(10),
                   child:
                       profileUrl.isNotEmpty
-                          ? Image.network(
-                            profileUrl,
-                            width: 40,
-                            height: 40,
-                            fit: BoxFit.cover,
-                            errorBuilder:
-                                (_, __, ___) => _empAvatarFallback(initials),
-                          )
+                          ? DriveImage(
+                              url: profileUrl,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              thumb: true,
+                            )
                           : _empAvatarFallback(initials),
                 ),
                 const SizedBox(width: 12),
@@ -4064,15 +4029,13 @@ class _EmployeeProfileSheetState extends State<_EmployeeProfileSheet> {
                             borderRadius: BorderRadius.circular(14),
                             child:
                                 profileUrl.isNotEmpty
-                                    ? Image.network(
-                                      profileUrl,
-                                      width: 64,
-                                      height: 64,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (_, __, ___) =>
-                                              _avatarFallback(initials, 64),
-                                    )
+                                    ? DriveImage(
+                                        url: profileUrl,
+                                        width: 64,
+                                        height: 64,
+                                        fit: BoxFit.cover,
+                                        thumb: true,
+                                      )
                                     : _avatarFallback(initials, 64),
                           ),
                           const SizedBox(width: 14),

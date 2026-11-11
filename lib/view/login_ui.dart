@@ -1,10 +1,11 @@
 import 'package:employee_attendance_app/services/supabase_service.dart';
-import 'package:employee_attendance_app/services/app_supabase.dart';
+// TODO(demo-disabled): Re-enable the Demo import after its client is migrated.
+// import 'package:employee_attendance_app/services/app_supabase.dart';
 import 'package:employee_attendance_app/view/admin_ui.dart';
 import 'package:employee_attendance_app/view/employee_home_ui.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -16,7 +17,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
-  final supabase = Supabase.instance.client;
+  final supabase = SheetsClient.instance;
   final supabaseService = SupabaseService();
 
   final usernameController = TextEditingController();
@@ -160,49 +161,51 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       final username = usernameController.text.trim();
       final password = passwordController.text.trim();
 
-      if (username.toLowerCase().startsWith('demo') &&
-          password.toLowerCase() == 'demo') {
-        final demoEmployee = await demoSupabase
-            .from('employees')
-            .select()
-            .eq('username', username.toLowerCase())
-            .eq('password', 'demo')
-            .eq('status', 'active')
-            .maybeSingle();
-
-        if (demoEmployee != null && mounted) {
-          final role = demoEmployee['role'];
-          if (role == 'admin') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AdminView(
-                  isDemo: true,
-                  client: demoSupabase,
-                ),
-              ),
-            );
-          } else {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => EmployeeHomeView(
-                  employeeId: demoEmployee['id'],
-                  employeeName: demoEmployee['full_name'] ?? '',
-                  employeePhone: demoEmployee['phone'] ?? '',
-                  client: demoSupabase,
-                ),
-              ),
-            );
-          }
-        } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ไม่พบบัญชี Demo ในฐานข้อมูล Demo')),
-          );
-        }
-        if (mounted) setState(() => isLoading = false);
-        return;
-      }
+      // TODO(demo-disabled): Re-enable Demo login after its client is migrated.
+      // if (username.toLowerCase().startsWith('demo') &&
+      //     password.toLowerCase() == 'demo') {
+      //   // TODO(demo): รอตัดสินใจเรื่องโปรเจกต์ Demo
+      //   final demoEmployee = await demoSupabase
+      //       .from('employees')
+      //       .select()
+      //       .eq('username', username.toLowerCase())
+      //       .eq('password', 'demo')
+      //       .eq('status', 'active')
+      //       .maybeSingle();
+      //
+      //   if (demoEmployee != null && mounted) {
+      //     final role = demoEmployee['role'];
+      //     if (role == 'admin') {
+      //       Navigator.pushReplacement(
+      //         context,
+      //         MaterialPageRoute(
+      //           builder: (_) => AdminView(
+      //             isDemo: true,
+      //             client: demoSupabase,
+      //           ),
+      //         ),
+      //       );
+      //     } else {
+      //       Navigator.pushReplacement(
+      //         context,
+      //         MaterialPageRoute(
+      //           builder: (_) => EmployeeHomeView(
+      //             employeeId: demoEmployee['id'],
+      //             employeeName: demoEmployee['full_name'] ?? '',
+      //             employeePhone: demoEmployee['phone'] ?? '',
+      //             client: demoSupabase,
+      //           ),
+      //         ),
+      //       );
+      //     }
+      //   } else if (mounted) {
+      //     ScaffoldMessenger.of(context).showSnackBar(
+      //       const SnackBar(content: Text('ไม่พบบัญชี Demo ในฐานข้อมูล Demo')),
+      //     );
+      //   }
+      //   if (mounted) setState(() => isLoading = false);
+      //   return;
+      // }
 
       final employee = await supabaseService.verifyLogin(
         username,

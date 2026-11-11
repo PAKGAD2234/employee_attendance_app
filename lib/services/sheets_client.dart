@@ -80,8 +80,98 @@ class SheetsClient {
     return d is Map && d['ok'] == true;
   }
 
+  // ----------------------------------------------------------
+  // รูปจาก Drive (ส่งกลับเป็น base64 ผ่าน op get_photo เพื่อเลี่ยง CORS บนเว็บ)
+  // ----------------------------------------------------------
+
+  final Map<String, Uint8List> _photoCache = {};
+  final Map<String, Future<Uint8List>> _photoInflight = {};
+  int _photoActive = 0;
+  final List<Completer<void>> _photoWaiters = [];
+  static const int _maxPhotoConcurrency = 2;
+
+  static final RegExp _bareId = RegExp(r'^[A-Za-z0-9_-]{10,}$');
+
+  /// true ถ้าค่านี้เป็นลิงก์/รหัสรูปของ Drive ที่ fetchPhoto อ่านได้
+  static bool isDrivePhoto(String? value) => extractDriveId(value) != null;
+
+  /// แยก fileId จาก: drive.google.com/thumbnail?id=..., lh3.googleusercontent.com/d/...,
+  /// drive.google.com/file/d/.../view, drive.google.com/open?id=... หรือรหัสล้วน
+  /// คืน null ถ้าเป็นลิงก์ภายนอกอื่น (เช่น Supabase)
+  static String? extractDriveId(String? value) {
+    if (value == null) return null;
+    final v = value.trim();
+    if (v.isEmpty) return null;
+    if (!v.startsWith('http')) {
+      return _bareId.hasMatch(v) && !v.contains('.') ? v : null;
+    }
+    final uri = Uri.tryParse(v);
+    if (uri == null) return null;
+    final host = uri.host.toLowerCase();
+    final isDrive = host == 'drive.google.com' ||
+        host == 'docs.google.com' ||
+        host.endsWith('googleusercontent.com');
+    if (!isDrive) return null;
+    final q = uri.queryParameters['id'];
+    if (q != null && _bareId.hasMatch(q)) return q;
+    final m = RegExp(r'/(?:file/d|d)/([A-Za-z0-9_-]{10,})').firstMatch(uri.path);
+    return m?.group(1);
+  }
+
+  /// ดึงรูปจาก Drive เป็น bytes (มี cache และกันโหลดซ้ำพร้อมกัน)
+  /// thumb=true ใช้รูปย่อ (รายการ/การ์ด) / thumb=false ใช้ไฟล์ต้นฉบับ (ดูเต็ม)
+  Future<Uint8List> fetchPhoto(String urlOrId, {bool thumb = true}) {
+    final id = extractDriveId(urlOrId);
+    if (id == null) {
+      return Future.error(const SheetsException(
+        'ไม่ใช่ลิงก์รูปของ Drive',
+        code: 'bad_request',
+      ));
+    }
+    final key = '$id|${thumb ? 't' : 'f'}';
+    final cached = _photoCache[key];
+    if (cached != null) return Future.value(cached);
+    final running = _photoInflight[key];
+    if (running != null) return running;
+
+    final f = _loadPhoto(id, thumb).then((bytes) {
+      _photoCache[key] = bytes;
+      return bytes;
+    }).whenComplete(() => _photoInflight.remove(key));
+    return _photoInflight[key] = f;
+  }
+
+  Future<Uint8List> _loadPhoto(String id, bool thumb) async {
+    // จำกัดจำนวนที่โหลดพร้อมกัน (Apps Script ตอบช้า)
+    while (_photoActive >= _maxPhotoConcurrency) {
+      final c = Completer<void>();
+      _photoWaiters.add(c);
+      await c.future;
+    }
+    _photoActive++;
+    try {
+      final d = await _call(
+        {'op': 'get_photo', 'fileId': id, 'thumb': thumb},
+        retryOnNetworkError: true,
+        timeout: const Duration(seconds: 90),
+      );
+      final b64 = (d is Map) ? d['data'] : null;
+      if (b64 is! String || b64.isEmpty) {
+        throw const SheetsException(
+          'เซิร์ฟเวอร์ไม่ส่งข้อมูลรูปกลับมา',
+          code: 'bad_response',
+        );
+      }
+      return base64Decode(b64);
+    } finally {
+      _photoActive--;
+      if (_photoWaiters.isNotEmpty) _photoWaiters.removeAt(0).complete();
+    }
+  }
+
   /// เปลี่ยนรหัสผ่าน โดยให้เซิร์ฟเวอร์ตรวจรหัสเดิมเอง
-  // TODO(verify with Code.gs): ชื่อฟิลด์ใน values ยังเป็นการคาด
+  /// เซิร์ฟเวอร์อ่าน employee_id / current / next จากระดับบนสุดของคำสั่ง (ตรวจกับ Code.gs แล้ว)
+  /// error code ที่เป็นไปได้: invalid_password, weak_password (สั้นกว่า 4 ตัว), not_found
   Future<void> changePassword({
     required String employeeId,
     required String oldPassword,
@@ -89,11 +179,9 @@ class SheetsClient {
   }) async {
     await _call({
       'op': 'change_password',
-      'values': {
-        'id': employeeId,
-        'old_password': oldPassword,
-        'new_password': newPassword,
-      },
+      'employee_id': employeeId,
+      'current': oldPassword,
+      'next': newPassword,
     });
   }
 
@@ -418,7 +506,7 @@ class SheetsFilterBuilder implements Future<dynamic> {
 
     final data = await _client._call(
       payload,
-      retryOnNetworkError: _op == 'select',
+      retryOnNetworkError: false,
     );
 
     // insert/update/delete ที่ไม่ได้เรียก .select() -> Supabase คืน null
@@ -516,16 +604,14 @@ class SheetsBucket {
   }
 
   Future<String> _uploadBytes(String path, Uint8List bytes) async {
-    // TODO(verify with Code.gs): ชื่อฟิลด์ใน values และรูปแบบ data ที่ตอบกลับยังเป็นการคาด
+    // เซิร์ฟเวอร์อ่าน path / base64 / contentType จากระดับบนสุดของคำสั่ง
+    // และตอบกลับเป็น {path, url} (ตรวจกับ Code.gs แล้ว) ไม่มีฟิลด์ bucket
     final data = await _client._call(
       {
         'op': 'upload',
-        'values': {
-          'bucket': bucket,
-          'path': path,
-          'contentType': _guessMime(path),
-          'base64': base64Encode(bytes),
-        },
+        'path': path,
+        'contentType': _guessMime(path),
+        'base64': base64Encode(bytes),
       },
       timeout: const Duration(seconds: 120),
     );
@@ -586,10 +672,11 @@ class SheetsFunctions {
     switch (functionName) {
       case 'push-notify':
         {
-          // TODO(verify with Code.gs): ชื่อฟิลด์ที่ op notify ต้องการยังเป็นการคาด
+          // เซิร์ฟเวอร์อ่าน title / body จากระดับบนสุดของคำสั่ง (ตรวจกับ Code.gs แล้ว)
           final data = await _client._call({
             'op': 'notify',
-            'values': body ?? <String, dynamic>{},
+            'title': body?['title'],
+            'body': body?['body'],
           });
           return SheetsFunctionResponse(200, data);
         }

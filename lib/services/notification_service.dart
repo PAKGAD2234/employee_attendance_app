@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../firebase_options.dart';
@@ -39,7 +39,7 @@ class NotificationService {
   }
 
   static Future<void> _saveToken(String token) async {
-    await Supabase.instance.client
+    await SheetsClient.instance
         .from('admin_tokens')
         .upsert({'token': token});
   }

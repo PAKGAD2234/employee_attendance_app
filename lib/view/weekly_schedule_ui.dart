@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
+import 'package:employee_attendance_app/services/drive_image.dart';
 
 class WeeklyScheduleUI extends StatefulWidget {
   final Map employee;
@@ -10,7 +11,7 @@ class WeeklyScheduleUI extends StatefulWidget {
 }
 
 class _WeeklyScheduleUIState extends State<WeeklyScheduleUI> {
-  final supabase = Supabase.instance.client;
+  final supabase = SheetsClient.instance;
 
   List _shifts = [];
   List _workSites = [];
@@ -1414,9 +1415,13 @@ class _WeeklyScheduleUIState extends State<WeeklyScheduleUI> {
           ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: profileUrl.isNotEmpty
-                ? Image.network(profileUrl,
-                    width: 56, height: 56, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _avatarFallback(initials))
+                ? DriveImage(
+                    url: profileUrl,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                    thumb: true,
+                  )
                 : _avatarFallback(initials),
           ),
           const SizedBox(width: 14),

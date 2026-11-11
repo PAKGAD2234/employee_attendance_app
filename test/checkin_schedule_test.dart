@@ -41,12 +41,14 @@ void main() {
     expect(resolved.lateThresholdMinutes, 15);
   });
 
-  test('stores attendance timestamps as UTC minus seven hours from Thai time', () {
+  test('stores attendance timestamps as Thai wall time', () {
     final thaiTime = DateTime(2026, 7, 10, 9, 0, 0);
     final stored = formatAttendanceStorageDateTime(thaiTime);
     final parsed = parseAttendanceDateTime(stored);
 
-    expect(stored, '2026-07-10T02:00:00.000Z');
-    expect(parsed, DateTime.utc(2026, 7, 10, 9, 0, 0));
+    expect(stored, '2026-07-10T09:00:00.000');
+    expect(parsed.hour, 9);
+    expect(parsed.minute, 0);
+    expect(formatAttendanceTime('2026-07-10T02:00:00.000Z'), '09:00');
   });
 }

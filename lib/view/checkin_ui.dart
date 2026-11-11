@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
 import 'package:flutter/foundation.dart'; // ← kIsWeb อยู่ที่นี่
 import '../utils/time_utils.dart';
 
@@ -31,7 +31,7 @@ class CheckInUI extends StatefulWidget {
 class _CheckInUIState extends State<CheckInUI>
     with SingleTickerProviderStateMixin {
   // ── Services ────────────────────────────────────────────────────────────────
-  final _supabase = Supabase.instance.client;
+  final _supabase = SheetsClient.instance;
 
   // ── UI state ─────────────────────────────────────────────────────────────
   XFile? _imageFile;
@@ -353,7 +353,8 @@ class _CheckInUIState extends State<CheckInUI>
       // ── Upload photo ───────────────────────────────────────────────────
       final fileName = '${now.millisecondsSinceEpoch}.jpg';
       final bytes = await _imageFile!.readAsBytes();
-      await _supabase.storage.from('attendance').uploadBinary(fileName, bytes);
+      final photoUrl =
+          await _supabase.storage.from('attendance').uploadBinary(fileName, bytes);
 
       // ── Insert attendance record ───────────────────────────────────────
       await _supabase.from('attendance').upsert({
@@ -362,7 +363,7 @@ class _CheckInUIState extends State<CheckInUI>
         'checkin_time': formatAttendanceStorageDateTime(now),
         'checkin_lat': pos.latitude,
         'checkin_lng': pos.longitude,
-        'checkin_photo': fileName,
+        'checkin_photo': photoUrl,
         'status': 'checkin',
         'late': isLate,
         'work_site_id': empSiteData['work_site_id'],

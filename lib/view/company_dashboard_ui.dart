@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:employee_attendance_app/view/schedule_calendar_ui.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
+import 'package:employee_attendance_app/services/drive_image.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/notification_service.dart';
 import '../services/supabase_service.dart';
@@ -12,7 +15,7 @@ import '../utils/time_utils.dart';
 // ══════════════════════════════════════════════════════════
 class CompanyDashboardView extends StatefulWidget {
   final Map<String, dynamic> workSite; // { id, name, address, ... }
-  final SupabaseClient? client;
+  final SheetsClient? client;
 
   const CompanyDashboardView({
     super.key,
@@ -26,7 +29,7 @@ class CompanyDashboardView extends StatefulWidget {
 
 class _CompanyDashboardViewState extends State<CompanyDashboardView>
     with SingleTickerProviderStateMixin {
-  late final SupabaseClient supabase;
+  late final SheetsClient supabase;
   final supabaseService = SupabaseService();
 
   List<Map<String, dynamic>> _employees = [];
@@ -57,22 +60,23 @@ class _CompanyDashboardViewState extends State<CompanyDashboardView>
   static const Color gray       = Color(0xFF6B7280);
   static const Color bg         = Color(0xFFF8FAFC);
 
-  RealtimeChannel? _notifChannel;
+  Timer? _notificationTimer;
+  bool _isNotificationRefreshInProgress = false;
 
   @override
   void initState() {
     super.initState();
-    supabase = widget.client ?? Supabase.instance.client;
+    supabase = widget.client ?? SheetsClient.instance;
     NotificationService.init();
     supabaseService.initialize(supabase);
     _loadData();
     _fetchNotifications();
-    _subscribeNotifications();
+    _startNotificationPolling();
   }
 
   @override
   void dispose() {
-    _notifChannel?.unsubscribe();
+    _notificationTimer?.cancel();
     super.dispose();
   }
 
@@ -375,17 +379,16 @@ Row(
     );
   }
 
-  void _subscribeNotifications() {
-    _notifChannel?.unsubscribe();
-    _notifChannel = supabase
-        .channel('notifications')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'notifications',
-          callback: (_) => _fetchNotifications(),
-        )
-        .subscribe();
+  void _startNotificationPolling() {
+    _notificationTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      if (!mounted || _isNotificationRefreshInProgress) return;
+      _isNotificationRefreshInProgress = true;
+      try {
+        await _fetchNotifications();
+      } finally {
+        _isNotificationRefreshInProgress = false;
+      }
+    });
   }
 
   Future<void> _fetchNotifications() async {
@@ -1029,8 +1032,13 @@ Widget _headerChip(
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: profileUrl.isNotEmpty
-                ? Image.network(profileUrl, width: 48, height: 48, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _avatarFallback(initials))
+                ? DriveImage(
+                    url: profileUrl,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    thumb: true,
+                  )
                 : _avatarFallback(initials),
           ),
           const SizedBox(width: 12),
@@ -1118,7 +1126,14 @@ Widget _headerChip(
           children: [
             Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
-            ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(url)),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: DriveImage(
+                url: url,
+                fit: BoxFit.contain,
+                thumb: false,
+              ),
+            ),
             const SizedBox(height: 12),
             TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('ปิด', style: TextStyle(color: Color(0xFF29B6F6))))
           ],
@@ -1145,11 +1160,13 @@ Widget _headerChip(
       onTap: () => _showPhotoDialog(url, label),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.network(url, width: 40, height: 40, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              width: 40, height: 40, color: Colors.white.withOpacity(0.06),
-              child: Icon(Icons.broken_image_outlined, size: 18, color: Colors.white.withOpacity(0.25)),
-            )),
+        child: DriveImage(
+          url: url,
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          thumb: true,
+        ),
       ),
     );
   }

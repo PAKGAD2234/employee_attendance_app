@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
 import 'package:flutter/foundation.dart'; // ← kIsWeb อยู่ที่นี่
 import '../utils/time_utils.dart';
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ class CheckOutUI extends StatefulWidget {
 class _CheckOutUIState extends State<CheckOutUI>
     with SingleTickerProviderStateMixin {
   // ── Services ─────────────────────────────────────────────────────────────
-  final _supabase = Supabase.instance.client;
+  final _supabase = SheetsClient.instance;
 
   // ── UI state ──────────────────────────────────────────────────────────────
   XFile? _imageFile;
@@ -98,7 +98,7 @@ class _CheckOutUIState extends State<CheckOutUI>
       if (rows.isNotEmpty && mounted) {
         final ci = rows[0]['checkin_time'] as String?;
         if (ci != null) {
-          final dt = DateTime.parse(ci).toLocal();
+          final dt = parseAttendanceDateTime(ci);
           setState(() => _checkInTimeDisplay =
               'เช็คอินเวลา ${_timeStr(dt)}');
         }
@@ -212,14 +212,15 @@ class _CheckOutUIState extends State<CheckOutUI>
       // ── Upload photo ───────────────────────────────────────────────────
       final fileName = '${now.millisecondsSinceEpoch}_out.jpg';
       final bytes = await _imageFile!.readAsBytes();
-      await _supabase.storage.from('attendance').uploadBinary(fileName, bytes);
+      final photoUrl =
+          await _supabase.storage.from('attendance').uploadBinary(fileName, bytes);
 
       // ── Update attendance record ───────────────────────────────────────
       final updated = await _supabase
           .from('attendance')
           .update({
             'checkout_time': formatAttendanceStorageDateTime(now),
-            'checkout_photo': fileName,
+            'checkout_photo': photoUrl,
             'checkout_lat': pos.latitude,
             'checkout_lng': pos.longitude,
             'status': 'checkout',

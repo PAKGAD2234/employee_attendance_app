@@ -1,10 +1,11 @@
 import 'dart:math';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:typed_data';
+import 'package:employee_attendance_app/services/sheets_client.dart';
 import 'package:flutter/foundation.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
-  late SupabaseClient _client;
+  late SheetsClient _client;
 
   factory SupabaseService() {
     return _instance;
@@ -12,27 +13,29 @@ class SupabaseService {
 
   SupabaseService._internal();
 
-  void initialize(SupabaseClient client) {
+  void initialize(SheetsClient client) {
     _client = client;
   }
 
-  SupabaseClient get client => _client;
+  SheetsClient get client => _client;
   // เพิ่มฟังก์ชันนี้ลงในคลาส SupabaseService
   Future<String?> uploadAttendanceImage(String fileName, dynamic imageFile) async {
     try {
       if (kIsWeb) {
         // ✅ สำหรับ Web: ต้องส่งเป็น Bytes (Uint8List) เท่านั้น
         // imageFile ที่ส่งมาควรเป็น Uint8List จากการใช้ XFile.readAsBytes()
-        await _client.storage
+        final bytes = imageFile is Uint8List
+            ? imageFile
+            : Uint8List.fromList(imageFile);
+        return await _client.storage
             .from('attendance')
-            .uploadBinary(fileName, imageFile);
+            .uploadBinary(fileName, bytes);
       } else {
         // ✅ สำหรับ Mobile: ใช้ upload แบบ File ปกติ
-        await _client.storage
+        return await _client.storage
             .from('attendance')
             .upload(fileName, imageFile);
       }
-      return fileName;
     } catch (e) {
       print('Error uploading image: $e');
       return null;
@@ -54,14 +57,18 @@ class SupabaseService {
   }
 }
 
-  // ดึงข้อมูล attendance ของพนักงานหนึ่งคน
-  Future<List<Map<String, dynamic>>> getEmployeeAttendance(String employeeId) async {
+    // ดึงข้อมูล attendance ของพนักงานหนึ่งคน (จำกัดจำนวน กันช้า)
+  Future<List<Map<String, dynamic>>> getEmployeeAttendance(
+    String employeeId, {
+    int limit = 31,
+  }) async {
     try {
       final response = await _client
-    .from('attendance')
-    .select('*, employees(full_name, work_site_id, work_sites(name))')
-    .eq('employee_id', employeeId)
-    .order('work_date', ascending: false);
+          .from('attendance')
+          .select('*, work_sites(name)')
+          .eq('employee_id', employeeId)
+          .order('work_date', ascending: false)
+          .limit(limit);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('Error fetching attendance: $e');
@@ -102,6 +109,8 @@ class SupabaseService {
 
   // ดึง URL ของภาพจาก storage
   String getImageUrl(String fileName) {
+    if (fileName.isEmpty) return '';
+    if (fileName.startsWith('http')) return fileName;
     try {
       final url = _client.storage
           .from('attendance')
@@ -378,12 +387,17 @@ class SupabaseService {
   }
 
   // เปลี่ยนรหัสผ่าน
-  Future<void> changePassword(String employeeId, String newPassword) async {
+  Future<void> changePassword(
+    String employeeId,
+    String oldPassword,
+    String newPassword,
+  ) async {
     try {
-      await _client
-          .from('employees')
-          .update({'password': newPassword})
-          .eq('id', employeeId);
+      await _client.changePassword(
+        employeeId: employeeId,
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+      );
     } catch (e) {
       print('Error changing password: $e');
       rethrow;
@@ -443,10 +457,10 @@ Future<void> deleteWorkSite(String id) async {
   // สร้าง password แบบสุ่ม (เช่น "Emp12345")
   String _generatePassword() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    final random = DateTime.now().millisecondsSinceEpoch;
+    final random = Random.secure();
     String result = 'Emp';
     for (int i = 0; i < 5; i++) {
-      result += chars[random.hashCode % chars.length];
+      result += chars[random.nextInt(chars.length)];
     }
     return result;
   }

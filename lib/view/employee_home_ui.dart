@@ -4,7 +4,8 @@ import 'package:employee_attendance_app/view/employee_profile_ui.dart';
 import 'package:employee_attendance_app/view/login_ui.dart';
 import 'package:employee_attendance_app/widgets/clock_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
+import 'package:employee_attendance_app/services/drive_image.dart';
 import '../services/supabase_service.dart';
 import 'checkin_ui.dart';
 
@@ -12,7 +13,7 @@ class EmployeeHomeView extends StatefulWidget {
   final String employeeId;
   final String employeeName;
   final String employeePhone;
-  final SupabaseClient? client;
+  final SheetsClient? client;
   const EmployeeHomeView({
     super.key,
     required this.employeeId,
@@ -27,7 +28,7 @@ class EmployeeHomeView extends StatefulWidget {
 
 class _EmployeeHomeViewState extends State<EmployeeHomeView>
     with TickerProviderStateMixin {
-  late final SupabaseClient supabase;
+  late final SheetsClient supabase;
   final supabaseService = SupabaseService();
 
   String fullName = '';
@@ -60,7 +61,7 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView>
   @override
   void initState() {
     super.initState();
-    supabase = widget.client ?? Supabase.instance.client;
+    supabase = widget.client ?? SheetsClient.instance;
     supabaseService.initialize(supabase);
     loadUser();
     _loadCalendar();
@@ -974,11 +975,11 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView>
                                             ),
                                           )
                                         : profilePhotoUrl.isNotEmpty
-                                            ? Image.network(profilePhotoUrl,
+                                            ? DriveImage(
+                                                url: profilePhotoUrl,
                                                 fit: BoxFit.cover,
-                                                cacheWidth: 124,
-                                                errorBuilder: (_, __, ___) =>
-                                                    _defaultAvatar())
+                                                thumb: true,
+                                              )
                                             : _defaultAvatar(),
                                   ),
                                 ),

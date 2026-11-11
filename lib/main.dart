@@ -3,15 +3,18 @@ import 'package:employee_attendance_app/view/login_ui.dart';
 import 'package:employee_attendance_app/view/splash_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
+import 'package:employee_attendance_app/services/sheets_config.dart';
+import 'package:employee_attendance_app/services/supabase_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(
-    url: 'https://zudwrubcrtgjtjragrkx.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1ZHdydWJjcnRnanRqcmFncmt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MDk2NDIsImV4cCI6MjA5MjE4NTY0Mn0.o2rMj_WvTGHNdNZ301vuX8UDwTanpGcKoYxJuP3G29k',
+  SheetsClient.initialize(
+    url: kSheetsUrl,
+    apiKey: kSheetsApiKey,
   );
+  SupabaseService().initialize(SheetsClient.instance);
 
   runApp(const MyApp());
 }

@@ -1,10 +1,10 @@
 // lib/services/schedule_service.dart  (ไฟล์ใหม่)
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
 
 class ScheduleService {
-  final SupabaseClient _db;
+  final SheetsClient _db;
   ScheduleService(this._db);
 
   /// คืน effective schedule สำหรับพนักงาน 1 คน ใน 1 วัน

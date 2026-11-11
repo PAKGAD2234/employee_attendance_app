@@ -1,8 +1,9 @@
 import 'dart:typed_data';
 
+import 'package:employee_attendance_app/services/drive_image.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/supabase_service.dart';
 
@@ -249,7 +250,7 @@ void showThemedSnackBar(
 
 class EmployeeProfileUI extends StatefulWidget {
   final String employeeId;
-  final SupabaseClient? client;
+  final SheetsClient? client;
 
   const EmployeeProfileUI({
     super.key,
@@ -263,7 +264,7 @@ class EmployeeProfileUI extends StatefulWidget {
 
 class _EmployeeProfileUIState extends State<EmployeeProfileUI>
     with SingleTickerProviderStateMixin {
-  late final SupabaseClient supabase;
+  late final SheetsClient supabase;
   final supabaseService = SupabaseService();
 
   bool isLoading = false;
@@ -272,7 +273,6 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
   String username = '-';
   String phone = '-';
   String profilePhotoUrl = '';
-  String storedPassword = '';
   String department = '-';
   String email = '-';
   String siteName = '-'; // ✅ เพิ่ม
@@ -288,7 +288,7 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
   @override
   void initState() {
     super.initState();
-    supabase = widget.client ?? Supabase.instance.client;
+    supabase = widget.client ?? SheetsClient.instance;
     supabaseService.initialize(supabase);
 
     _fadeCtrl = AnimationController(
@@ -324,7 +324,6 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
           siteName = data['work_sites']?['name'] ?? '-';
           profilePhotoUrl =
               supabaseService.getProfilePhotoUrl(data['profile_photo']);
-          storedPassword = data['password'] ?? '';
         });
         _fadeCtrl.forward(from: 0);
       }
@@ -351,13 +350,11 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
     try {
       final fileName =
           'profiles/${widget.employeeId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      await supabase.storage.from('attendance').uploadBinary(
-            fileName,
-            bytes,
-            fileOptions: const FileOptions(upsert: true),
-          );
+      // TODO(migrate): SheetsClient.uploadBinary has no fileOptions/upsert equivalent.
+      final photoUrl =
+          await supabase.storage.from('attendance').uploadBinary(fileName, bytes);
       await supabaseService.updateEmployee(widget.employeeId, {
-        'profile_photo': fileName,
+        'profile_photo': photoUrl,
       });
       await loadEmployee();
       if (mounted) showThemedSnackBar(context, 'อัปโหลดรูปโปรไฟล์สำเร็จ');
@@ -383,19 +380,18 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
       showThemedSnackBar(context, 'รหัสผ่านใหม่ไม่ตรงกัน', isError: true);
       return;
     }
-    if (storedPassword.isNotEmpty && current != storedPassword) {
-      showThemedSnackBar(context, 'รหัสผ่านปัจจุบันไม่ถูกต้อง', isError: true);
-      return;
-    }
-
     setState(() => isLoading = true);
     try {
-      await supabaseService.changePassword(widget.employeeId, newPw);
+      await supabaseService.changePassword(widget.employeeId, current, newPw);
       currentPasswordController.clear();
       newPasswordController.clear();
       confirmPasswordController.clear();
       if (mounted) showThemedSnackBar(context, 'เปลี่ยนรหัสผ่านสำเร็จ');
       await loadEmployee();
+    } on SheetsException catch (e) {
+      if (mounted) {
+        showThemedSnackBar(context, e.message, isError: true);
+      }
     } catch (e) {
       if (mounted)
         showThemedSnackBar(context, 'Error changing password: $e',
@@ -530,12 +526,17 @@ class _EmployeeProfileUIState extends State<EmployeeProfileUI>
           child: CircleAvatar(
             radius: 52,
             backgroundColor: kDeepBlue.withOpacity(0.3),
-            backgroundImage: profilePhotoUrl.isNotEmpty
-                ? NetworkImage(profilePhotoUrl)
-                : null,
-            child: profilePhotoUrl.isEmpty
-                ? const Icon(Icons.person, size: 56, color: kPrimaryBlue)
-                : null,
+            child: profilePhotoUrl.isNotEmpty
+                ? ClipOval(
+                    child: DriveImage(
+                      url: profilePhotoUrl,
+                      width: 104,
+                      height: 104,
+                      fit: BoxFit.cover,
+                      thumb: true,
+                    ),
+                  )
+                : const Icon(Icons.person, size: 56, color: kPrimaryBlue),
           ),
         ),
         const SizedBox(height: 14),

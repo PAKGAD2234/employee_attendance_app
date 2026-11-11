@@ -10,7 +10,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import 'package:universal_html/html.dart' as html;
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
 
 /// ════════════════════════════════════════════════════════════
 /// EXPORT REPORT — สรุปสถิติการเข้างานรายเดือน + Export CSV / PDF
@@ -36,7 +36,7 @@ class ExportReportUI extends StatefulWidget {
 }
 
 class _ExportReportUIState extends State<ExportReportUI> {
-  final supabase = Supabase.instance.client;
+  final supabase = SheetsClient.instance;
 
   // ── palette (เหมือนหน้าอื่นๆ ในแอป) ──────────────────────
   static const Color blue800 = Color(0xFF0C447C);

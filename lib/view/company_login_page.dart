@@ -1,6 +1,6 @@
 import 'package:employee_attendance_app/view/company_dashboard_ui.dart';
+import 'package:employee_attendance_app/services/sheets_client.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import '../services/app_supabase.dart';
 
@@ -15,7 +15,7 @@ class CompanyLoginPage extends StatefulWidget {
 
 class _CompanyLoginPageState extends State<CompanyLoginPage>
     with TickerProviderStateMixin {
-  final supabase = Supabase.instance.client;
+  final supabase = SheetsClient.instance;
   final supabaseService = SupabaseService();
 
   final _pinCtrl = TextEditingController();
@@ -82,15 +82,17 @@ class _CompanyLoginPageState extends State<CompanyLoginPage>
           .select(select)
           .eq('pin', pin)
           .maybeSingle();
-        SupabaseClient dashboardClient = supabase;
+        SheetsClient dashboardClient = supabase;
 
         if (res == null) {
+        // TODO(demo): รอตัดสินใจเรื่องโปรเจกต์ Demo
         res = await demoSupabase
           .from('work_sites')
           .select(select)
           .eq('pin', pin)
           .maybeSingle();
-        if (res != null) dashboardClient = demoSupabase;
+        // TODO(demo-disabled): Do not pass a SupabaseClient to SheetsClient until Demo is migrated.
+        // if (res != null) dashboardClient = demoSupabase as SheetsClient;
         }
 
       if (res != null) {
